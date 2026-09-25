@@ -154,3 +154,23 @@ Engineered in full compliance with:
 - **[Regulation (EU) 2024/1689 (EU AI Act)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)** — European Parliament and Council regulation establishing harmonised rules on artificial intelligence.
 - **[German BSI Cloud Computing Compliance Criteria Catalogue (C5:2024)](https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/Zertifizierung-nach-IT-Grundschutz/C5/c5_node.html)** — German Federal Office for Information Security criteria for secure and sovereign cloud computing.
 - **[Directive (EU) 2022/2555 (NIS2 Directive)](https://eur-lex.europa.eu/eli/dir/2022/2555/oj)** — Measures for a high common level of cybersecurity and critical infrastructure supply chain security across the European Union.
+
+---
+
+## 7. Docker Deployment
+
+A production-ready Docker setup is included:
+
+```bash
+# Build & start (regenerates synthetic data inside the container)
+docker compose -f docker-compose.deploy.yml up -d --build
+
+# App is served at http://localhost:8510
+# Set OPENROUTER_API_KEY to enable live LLM reasoning
+# (without a key, the offline deterministic fallback mode is used)
+```
+
+- **Dockerfile** — multi-stage Python 3.11-slim image; generates BOM/documents/graph/Chroma
+  index at build time so the container is self-contained (no API key required for the demo).
+- **Ports** — binds `127.0.0.1:8510` → container `8501`; reverse-proxied by nginx at
+  `https://supply-chain.taskmind-ai.com`.

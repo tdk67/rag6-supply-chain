@@ -1,0 +1,10 @@
+services:
+  rag6-supply-chain:
+    build: .
+    image: rag6-supply-chain:latest
+    container_name: rag6-supply-chain
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8510:8501"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
