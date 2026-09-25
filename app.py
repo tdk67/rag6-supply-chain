@@ -14,6 +14,8 @@ from ui.tab_simulation import render_tab_simulation
 from ui.tab_analytics import render_tab_analytics
 from ui.tab_ingestion import render_tab_ingestion
 from utils.config import load_config, get_secret
+from ports.registry import AdapterRegistry
+from ports.llm_provider.openrouter_adapter import OpenRouterAdapter
 
 # 1. Page Configuration & Theme
 st.set_page_config(
@@ -108,8 +110,6 @@ def main():
 
         st.markdown("---")
         st.markdown("### 🔑 OpenRouter API Configuration")
-        from utils.config import get_secret
-        from ports.llm_provider.openrouter_adapter import OpenRouterAdapter
 
         stored_env_key = get_secret("OPENROUTER_API_KEY") or ""
         has_env_key = bool(stored_env_key and stored_env_key.strip() not in ("", "placeholder_key", "sk-or-your-key-here"))
