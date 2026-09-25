@@ -195,6 +195,12 @@ OPENROUTER_API_KEY=sk-or-v1-your-key-here
 ```
 *(Operational parameters such as model names, temperature, timeouts, and chunking parameters are strictly managed in `config.json`.)*
 
+> **EU sovereignty model routing** — the default LLM is `deepseek/deepseek-v4-flash-0731`, served exclusively by European
+> providers (`Nebius` 🇳🇱, `Inceptron` 🇸🇪/🇫🇮, `NextBit` 🇪🇸) with `allow_fallbacks: false` so requests never silently
+> egress to non-EU hosts. `data_collection: deny` + `zdr: true` are also set. The app auto-retries transient upstream 429s
+> (3 attempts, backoff) and, if the LLM call ultimately fails, **stops with the exact error** instead of returning any
+> fallback text. Switch the model/provider order in `config.json` under `llm.provider_routing`.
+
 ### 3. Generate Datasets & Knowledge Bases
 Execute the data generation and indexing pipeline:
 ```bash

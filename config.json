@@ -6,7 +6,7 @@
   },
   "llm": {
     "provider": "openrouter",
-    "model": "mistralai/mistral-large-2512",
+    "model": "deepseek/deepseek-v4-flash-0731",
     "base_url": "https://openrouter.ai/api/v1",
     "max_tokens": 4096,
     "temperature": 0.1,
@@ -14,8 +14,8 @@
     "retries": 3,
     "retry_backoff_seconds": 2,
     "provider_routing": {
-      "order": ["Mistral"],
-      "allow_fallbacks": true,
+      "order": ["Nebius", "Inceptron", "NextBit"],
+      "allow_fallbacks": false,
       "data_collection": "deny",
       "zdr": true
     }
