@@ -12,6 +12,7 @@ CRITICAL RULES:
 - Output ONLY valid SQLite SELECT queries.
 - NEVER generate INSERT, UPDATE, DELETE, DROP, ALTER, or PRAGMA statements.
 - Return ONLY raw SQL inside ```sql ... ``` code block or as plain text without conversational filler.
+- If the question cannot be answered using the database schema or is unrelated to supply chain / infrastructure, output: NONE
 
 User Question: {question}
 SQL Query:

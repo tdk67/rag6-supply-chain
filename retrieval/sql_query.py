@@ -80,10 +80,14 @@ class SQLQueryTool:
         if not re.match(r"^(SELECT|WITH)\b", clean, re.IGNORECASE):
             raise ValueError("Forbidden SQL query: Only read-only SELECT or WITH statements are allowed.")
 
-        # Ensure query references at least one domain table (components, suppliers, purchase_orders, dock_receipts, document_registry)
-        domain_tables = ["components", "suppliers", "purchase_orders", "dock_receipts", "document_registry"]
+        # Ensure query references at least one domain table (components, suppliers, purchase_orders, dock_receipts, document_registry, racks)
+        domain_tables = ["components", "suppliers", "purchase_orders", "dock_receipts", "document_registry", "racks"]
         if not any(re.search(rf"\b{tbl}\b", clean, re.IGNORECASE) for tbl in domain_tables):
             raise ValueError("Query does not reference any known supply chain database tables.")
+
+        # Reject impossible/empty predicates indicating out-of-domain query
+        if re.search(r"\bWHERE\s+(0|1\s*=\s*0|FALSE)\b", clean, re.IGNORECASE):
+            raise ValueError("Query contains an empty predicate (WHERE 0/FALSE) indicating an out-of-domain question.")
 
         return clean
 
