@@ -57,13 +57,31 @@ def render_tab_ingestion():
     with col_up:
         st.markdown("#### Upload Document")
         uploaded = st.file_uploader(
-            "Select PDF or TXT Document to Ingest",
-            type=["pdf", "txt"],
+            "Select Document or Spreadsheet to Ingest (PDF, TXT, CSV, Excel)",
+            type=["pdf", "txt", "csv", "xlsx", "xls"],
             key="file_uploader_widget",
         )
         version_input = st.text_input("Document Version", value="1.0", key="ingest_version_input")
 
         if uploaded is not None:
+            # Show preview for spreadsheet files
+            if uploaded.name.endswith(".csv"):
+                try:
+                    df_preview = pd.read_csv(uploaded)
+                    uploaded.seek(0)
+                    st.caption(f"📊 Previewing CSV: `{uploaded.name}` ({len(df_preview)} rows, {len(df_preview.columns)} cols)")
+                    st.dataframe(df_preview.head(5), use_container_width=True)
+                except Exception:
+                    pass
+            elif uploaded.name.endswith((".xlsx", ".xls")):
+                try:
+                    df_preview = pd.read_excel(uploaded)
+                    uploaded.seek(0)
+                    st.caption(f"📊 Previewing Excel: `{uploaded.name}` ({len(df_preview)} rows, {len(df_preview.columns)} cols)")
+                    st.dataframe(df_preview.head(5), use_container_width=True)
+                except Exception:
+                    pass
+
             if st.button("⚡ Parse, Register & Embed into ChromaDB", type="primary"):
                 with st.spinner(f"Ingesting {uploaded.name}..."):
                     try:

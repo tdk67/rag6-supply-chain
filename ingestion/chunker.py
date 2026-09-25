@@ -273,11 +273,41 @@ def chunk_bulletin_document(doc: ParsedDocument) -> List[VectorChunk]:
     return chunks
 
 
+def chunk_tabular_document(doc: ParsedDocument) -> List[VectorChunk]:
+    """Convert spreadsheet / tabular parsed pages into searchable vector chunks."""
+    chunks: List[VectorChunk] = []
+    chunk_seq = 1
+    for page in doc.pages:
+        text = page.text.strip()
+        if not text:
+            continue
+        cid = f"{doc.doc_id}_chunk_{chunk_seq:03d}"
+        chunks.append(
+            VectorChunk(
+                chunk_id=cid,
+                doc_id=doc.doc_id,
+                text=text,
+                metadata={
+                    "source_file": doc.filename,
+                    "page_number": page.page_number,
+                    "section_heading": f"Sheet / Table Page {page.page_number}",
+                    "classification": "TABLE_DATA",
+                    "is_active": True,
+                    "keywords": extract_keywords(text),
+                },
+            )
+        )
+        chunk_seq += 1
+    return chunks
+
+
 def chunk_document(doc: ParsedDocument) -> List[VectorChunk]:
     """Format-aware chunking dispatcher."""
     if doc.classification == "LEGAL_COMMERCIAL":
         return chunk_legal_document(doc)
     elif doc.classification == "TECHNICAL_SPEC":
         return chunk_technical_document(doc)
+    elif doc.classification == "TABLE_DATA":
+        return chunk_tabular_document(doc)
     else:
         return chunk_bulletin_document(doc)

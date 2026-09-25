@@ -29,6 +29,7 @@ class SQLQueryResult(BaseModel):
     rows: List[Dict[str, Any]] = Field(default_factory=list)
     dataframe_json: str = "[]"
     execution_time_ms: float = 0.0
+    table_name: Optional[str] = None
     error_message: Optional[str] = None
 
 
@@ -154,11 +155,14 @@ class SQLQueryTool:
             return self.execute_raw(sql)
 
         # Fallback to LLM Text-to-SQL
-        prompt = get_prompt("text_to_sql.txt", {"question": user_question})
-        generated_sql = self.llm.generate(prompt=prompt, temperature=0.0)
-        res = self.execute_raw(generated_sql)
-        if res.success:
-            return res
+        try:
+            prompt = get_prompt("text_to_sql.txt", {"question": user_question})
+            generated_sql = self.llm.generate(prompt=prompt, temperature=0.0)
+            res = self.execute_raw(generated_sql)
+            if res.success:
+                return res
+        except Exception:
+            pass
 
         # Generic safe fallback query
         return self.execute_raw("SELECT * FROM purchase_orders LIMIT 5")

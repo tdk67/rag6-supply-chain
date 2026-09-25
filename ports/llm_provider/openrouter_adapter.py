@@ -43,11 +43,12 @@ class OpenRouterAdapter(LLMProviderPort):
         max_tokens: int = 2048,
     ) -> str:
         if not self.api_key or self.api_key.strip() in ("", "placeholder_key", "sk-or-your-key-here"):
-            # Offline deterministic reasoning fallback
-            return self._offline_fallback(messages)
+            raise ValueError(
+                "OpenRouter API key is not configured. Please enter a valid OPENROUTER_API_KEY in the sidebar or in .env."
+            )
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {self.api_key.strip()}",
             "HTTP-Referer": "http://localhost:8501",
             "X-Title": "Aethelgard Infra-GraphRAG",
             "Content-Type": "application/json",
@@ -67,36 +68,42 @@ class OpenRouterAdapter(LLMProviderPort):
         try:
             with httpx.Client(timeout=self.timeout) as client:
                 resp = client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
-                resp.raise_for_status()
+                if resp.status_code != 200:
+                    err_msg = resp.text
+                    try:
+                        err_json = resp.json()
+                        err_msg = err_json.get("error", {}).get("message", resp.text)
+                    except Exception:
+                        pass
+                    raise RuntimeError(f"OpenRouter API error (HTTP {resp.status_code}): {err_msg}")
+
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
-        except Exception:
-            return self._offline_fallback(messages)
+        except httpx.RequestError as e:
+            raise RuntimeError(f"OpenRouter network connection error: {str(e)}")
 
-    def _offline_fallback(self, messages: List[Dict[str, str]]) -> str:
-        """Deterministic fallback when API key is unconfigured or network is unavailable."""
-        user_msg = ""
-        for m in reversed(messages):
-            if m.get("role") == "user":
-                user_msg = m.get("content", "")
-                break
+    @staticmethod
+    def validate_api_key(api_key: str, base_url: str = "https://openrouter.ai/api/v1") -> tuple[bool, str]:
+        """Validate OpenRouter API key against the /auth/key endpoint."""
+        clean_key = (api_key or "").strip()
+        if not clean_key or clean_key in ("placeholder_key", "sk-or-your-key-here"):
+            return False, "API key is missing or empty."
 
-        # Check for injection or guardrail check requests
-        if "potential prompt injection" in user_msg.lower() or "ignore instructions" in user_msg.lower():
-            return '{"is_injection": true, "reason": "Attempt to bypass system instructions or alter persona detected."}'
+        try:
+            headers = {"Authorization": f"Bearer {clean_key}"}
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(f"{base_url}/auth/key", headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json().get("data", {})
+                    label = data.get("label") or "Default Key"
+                    limit = data.get("limit")
+                    usage = data.get("usage", 0)
+                    limit_str = f"${limit}" if limit else "Unlimited"
+                    return True, f"Valid OpenRouter Key ({label} | Usage: ${usage:.2f} / {limit_str})"
+                elif resp.status_code == 401:
+                    return False, "Invalid API key (HTTP 401 Unauthorized)."
+                else:
+                    return False, f"OpenRouter check failed (HTTP {resp.status_code}): {resp.text[:100]}"
+        except Exception as e:
+            return False, f"Connection to OpenRouter failed: {str(e)}"
 
-        # Intent classification request
-        if "classify" in user_msg.lower() or "pattern" in user_msg.lower():
-            if "taiwan" in user_msg.lower() or "blast radius" in user_msg.lower():
-                return "P3: Sequential Graph-First"
-            if "force majeure" in user_msg.lower() or "liquidated damages" in user_msg.lower():
-                return "P2: Parallel Hybrid"
-            if "only one" in user_msg.lower() or "single point of failure" in user_msg.lower() or "single source" in user_msg.lower():
-                return "P1: Deterministic Text-to-Cypher"
-            if "compare" in user_msg.lower() or "cost" in user_msg.lower():
-                return "P4: Sequential Table-First"
-            if "audit" in user_msg.lower() or "compliance" in user_msg.lower() or "c5" in user_msg.lower():
-                return "P5: Adaptive Router (Vector-Primary)"
-            return "P6: Agentic Multi-Step Loop"
-
-        return "Synthesized analysis based on tri-modal grounding."

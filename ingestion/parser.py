@@ -131,13 +131,117 @@ def parse_txt(file_path: str | Path) -> ParsedDocument:
     )
 
 
+def parse_csv(file_path: str | Path) -> ParsedDocument:
+    """Extract tabular data, columns, and records from a CSV spreadsheet."""
+    import pandas as pd
+
+    path = resolve_path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"CSV file not found: {path}")
+
+    file_hash = calculate_file_sha256(path)
+    df = pd.read_csv(path)
+    title = path.stem.replace("_", " ").title()
+
+    rows_total = len(df)
+    cols_total = len(df.columns)
+    header_summary = (
+        f"Spreadsheet Dataset: {path.name} | Records: {rows_total} rows, {cols_total} columns.\n"
+        f"Columns: {', '.join(str(c) for c in df.columns)}"
+    )
+
+    chunk_size = 50
+    pages: List[ParsedPage] = []
+    if rows_total == 0:
+        pages.append(ParsedPage(page_number=1, text=header_summary, char_count=len(header_summary)))
+    else:
+        for idx, start_idx in enumerate(range(0, rows_total, chunk_size), start=1):
+            subset = df.iloc[start_idx : start_idx + chunk_size]
+            table_md = subset.to_markdown(index=False)
+            page_text = f"{header_summary}\n\n[Rows {start_idx + 1} to {min(start_idx + chunk_size, rows_total)}]:\n{table_md}"
+            pages.append(ParsedPage(page_number=idx, text=page_text, char_count=len(page_text)))
+
+    return ParsedDocument(
+        doc_id=path.stem.lower().replace(" ", "_"),
+        title=title,
+        filename=path.name,
+        file_path=str(path),
+        classification="TABLE_DATA",
+        total_pages=len(pages),
+        sha256_hash=file_hash,
+        pages=pages,
+        metadata={"format": "CSV", "row_count": rows_total, "column_count": cols_total},
+    )
+
+
+def parse_excel(file_path: str | Path) -> ParsedDocument:
+    """Extract sheets, tables, and records from an Excel workbook (.xlsx, .xls)."""
+    import pandas as pd
+
+    path = resolve_path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Excel file not found: {path}")
+
+    file_hash = calculate_file_sha256(path)
+    excel_file = pd.ExcelFile(path)
+    title = path.stem.replace("_", " ").title()
+
+    pages: List[ParsedPage] = []
+    page_idx = 1
+    total_rows = 0
+
+    for sheet_name in excel_file.sheet_names:
+        df = excel_file.parse(sheet_name)
+        rows_count = len(df)
+        cols_count = len(df.columns)
+        total_rows += rows_count
+        header_summary = (
+            f"Workbook: {path.name} | Sheet: {sheet_name} | {rows_count} rows, {cols_count} columns.\n"
+            f"Columns: {', '.join(str(c) for c in df.columns)}"
+        )
+
+        chunk_size = 50
+        if rows_count == 0:
+            pages.append(ParsedPage(page_number=page_idx, text=header_summary, char_count=len(header_summary)))
+            page_idx += 1
+        else:
+            for start_idx in range(0, rows_count, chunk_size):
+                subset = df.iloc[start_idx : start_idx + chunk_size]
+                table_md = subset.to_markdown(index=False)
+                page_text = f"{header_summary}\n\n[Rows {start_idx + 1} to {min(start_idx + chunk_size, rows_count)}]:\n{table_md}"
+                pages.append(ParsedPage(page_number=page_idx, text=page_text, char_count=len(page_text)))
+                page_idx += 1
+
+    return ParsedDocument(
+        doc_id=path.stem.lower().replace(" ", "_"),
+        title=title,
+        filename=path.name,
+        file_path=str(path),
+        classification="TABLE_DATA",
+        total_pages=len(pages),
+        sha256_hash=file_hash,
+        pages=pages,
+        metadata={
+            "format": "EXCEL",
+            "sheet_names": excel_file.sheet_names,
+            "total_rows": total_rows,
+        },
+    )
+
+
 def parse_document(file_path: str | Path) -> ParsedDocument:
-    """Dispatches parsing based on file extension."""
+    """Dispatches parsing based on file extension (PDF, TXT, CSV, Excel)."""
     path = resolve_path(file_path)
     ext = path.suffix.lower()
     if ext == ".pdf":
         return parse_pdf(path)
     elif ext in (".txt", ".md"):
         return parse_txt(path)
+    elif ext == ".csv":
+        return parse_csv(path)
+    elif ext in (".xlsx", ".xls"):
+        return parse_excel(path)
     else:
-        raise ValueError(f"Unsupported file format for parser: {ext}")
+        raise ValueError(
+            f"Unsupported file format for parser: {ext}. Supported formats: PDF, TXT, CSV, Excel (.xlsx, .xls)"
+        )

@@ -52,3 +52,8 @@ class AdapterRegistry:
             else:
                 cls._llm_provider = OpenRouterAdapter()
         return cls._llm_provider
+
+    @classmethod
+    def set_llm_provider(cls, provider: LLMProviderPort) -> None:
+        """Explicitly override LLM provider (e.g. from UI input or test mock)."""
+        cls._llm_provider = provider

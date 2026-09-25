@@ -23,6 +23,7 @@ COLLECTION_MAP = {
     "TECHNICAL_SPEC": "technical_specs",
     "COMPLIANCE_AUDIT": "compliance_docs",
     "DISRUPTION_BULLETIN": "disruption_bulletins",
+    "TABLE_DATA": "table_summaries",
     "GENERAL": "table_summaries",
 }
 

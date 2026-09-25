@@ -20,10 +20,10 @@ from utils.config import load_config
 
 # Attribute-Based Access Control (ABAC) persona clearance mappings
 PERSONA_PERMISSIONS = {
-    "LEGAL": ["legal_contracts", "compliance_docs", "disruption_bulletins", "technical_specs"],
-    "PROCUREMENT": ["legal_contracts", "disruption_bulletins", "technical_specs"],
-    "CTO": ["technical_specs", "compliance_docs", "disruption_bulletins"],
-    "SRE": ["technical_specs", "disruption_bulletins"],  # SRE restricted: NO legal_contracts!
+    "LEGAL": ["legal_contracts", "compliance_docs", "disruption_bulletins", "technical_specs", "table_summaries"],
+    "PROCUREMENT": ["legal_contracts", "disruption_bulletins", "technical_specs", "table_summaries"],
+    "CTO": ["technical_specs", "compliance_docs", "disruption_bulletins", "table_summaries"],
+    "SRE": ["technical_specs", "disruption_bulletins", "table_summaries"],  # SRE restricted: NO legal_contracts!
 }
 
 

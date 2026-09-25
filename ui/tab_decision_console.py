@@ -147,7 +147,7 @@ def render_tab_decision_console(persona: str = "LEGAL"):
 
 
 def _render_response_extras(resp: AgentResponse):
-    """Render confidence meter, citations accordion, diagram, and discrepancies."""
+    """Render confidence meter, citations with full text preview, diagram, and discrepancies."""
     # Confidence Gauge Tile
     c_color = "#10B981" if resp.confidence_score >= 85 else ("#F59E0B" if resp.confidence_score >= 60 else "#EF4444")
     st.markdown(
@@ -168,20 +168,29 @@ def _render_response_extras(resp: AgentResponse):
         st.markdown("#### 📐 Architecture & Blast Radius Diagram")
         st.markdown(f"```{resp.diagram.type}\n{resp.diagram.content}\n```")
 
-    # Clickable Citations Card
+    # In-Depth Verified Citations with Document Previews
     if resp.citations:
-        with st.expander(f"📚 Verified Citations ({len(resp.citations)} Sources Grounded)", expanded=False):
-            for cit in resp.citations:
-                page_str = f"Page {cit.page_number}" if cit.page_number else ""
-                sec_str = cit.section or cit.table or ""
-                loc = f" — {sec_str} ({page_str})" if page_str else f" — {sec_str}"
-                st.markdown(f"**{cit.ref_id} `{cit.source_file}`**{loc}")
-                st.caption(f"> {cit.excerpt}")
+        st.markdown(f"#### 📚 Verified Evidence Citations ({len(resp.citations)} Sources Grounded)")
+        for cit in resp.citations:
+            source_icon = "📄" if cit.source_type == "document" else ("📊" if cit.source_type == "table" else "🕸️")
+            loc_parts = [p for p in [cit.section, f"Page {cit.page_number}" if cit.page_number else None, cit.table] if p]
+            loc_str = f" — {', '.join(loc_parts)}" if loc_parts else ""
+
+            with st.expander(f"{source_icon} {cit.ref_id} **{cit.source_file}**{loc_str}", expanded=False):
+                st.markdown(f"**Verified Excerpt:**\n> {cit.excerpt}")
+                if cit.full_text:
+                    st.markdown("**📖 Full Context / Document Text Preview:**")
+                    if cit.source_type in ("table", "graph"):
+                        st.code(cit.full_text, language="json" if "{" in cit.full_text or "[" in cit.full_text else "text")
+                    else:
+                        st.info(cit.full_text)
+                if cit.metadata:
+                    st.caption(f"Classification / Metadata: `{cit.metadata}`")
 
     # Proactive Follow-ups
     if resp.suggested_followups:
-        st.markdown("💡 **Proactive Investigation Follow-ups:**")
+        st.markdown("💡 **Suggested Proactive Follow-up Inquiries:**")
         cols = st.columns(len(resp.suggested_followups))
         for i, q in enumerate(resp.suggested_followups):
             with cols[i]:
-                st.button(f"🔍 {q[:35]}...", key=f"followup_{hash(q)}_{i}", help=q)
+                st.button(f"🔍 {q[:38]}...", key=f"followup_{hash(q)}_{i}", help=q)

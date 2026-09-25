@@ -92,6 +92,50 @@ def main():
         st.caption(f"_{clearance_desc}_")
 
         st.markdown("---")
+        st.markdown("### 🔑 OpenRouter API Configuration")
+        from utils.config import get_secret
+        from ports.llm_provider.openrouter_adapter import OpenRouterAdapter
+        from ports.registry import AdapterRegistry
+
+        stored_env_key = get_secret("OPENROUTER_API_KEY") or ""
+        current_key = st.session_state.get("openrouter_api_key", stored_env_key)
+
+        api_key_input = st.text_input(
+            "OpenRouter API Key:",
+            value=current_key,
+            type="password",
+            placeholder="sk-or-v1-...",
+            help="Enter your OpenRouter key to enable dynamic LLM synthesis. Leave blank if set in .env",
+            key="ui_api_key_input",
+        )
+
+        col_val1, col_val2 = st.columns(2)
+        with col_val1:
+            if st.button("🔌 Verify Key", key="btn_validate_key", use_container_width=True):
+                with st.spinner("Connecting to OpenRouter..."):
+                    valid, msg = OpenRouterAdapter.validate_api_key(api_key_input)
+                    if valid:
+                        st.session_state["openrouter_api_key"] = api_key_input
+                        AdapterRegistry.set_llm_provider(OpenRouterAdapter(api_key=api_key_input))
+                        st.success("Verified!")
+                        st.caption(msg)
+                    else:
+                        st.error("Validation Failed")
+                        st.caption(msg)
+        with col_val2:
+            if api_key_input:
+                if st.button("💾 Apply Key", key="btn_apply_key", use_container_width=True):
+                    st.session_state["openrouter_api_key"] = api_key_input
+                    AdapterRegistry.set_llm_provider(OpenRouterAdapter(api_key=api_key_input))
+                    st.success("Applied to session!")
+
+        active_key = st.session_state.get("openrouter_api_key") or stored_env_key
+        if active_key and active_key.strip() not in ("", "placeholder_key", "sk-or-your-key-here"):
+            st.markdown("🟢 **Status:** Dynamic LLM Active")
+        else:
+            st.markdown("🟡 **Status:** Synthesis Offline (Retrieval active; enter key above)")
+
+        st.markdown("---")
         st.markdown("### ⚙️ Engine Health & Models")
         st.info(
             f"**LLM Model:** `{cfg['llm']['model']}`\n\n"
