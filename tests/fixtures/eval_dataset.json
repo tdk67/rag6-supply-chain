@@ -1,0 +1,113 @@
+[
+  {
+    "id": "Q1",
+    "question": "If geopolitical conflict disrupts freight routes out of Taiwan, which Tier-1 hardware components are directly or indirectly blocked, which sub-tier suppliers are the bottlenecks, and what is our total affected order value?",
+    "expected_pattern": "P3: Sequential Graph-First",
+    "expected_tools": ["graph_query", "sql_query"],
+    "ground_truth_claims": [
+      "TSMC Semiconductor is the upstream wafer/packaging bottleneck in Taiwan",
+      "SKU-GPU-MI300X, SKU-GPU-H200, SKU-OPT-800G, SKU-CHAS-ORV3-WI are affected",
+      "Total affected order value in millions of Euros"
+    ]
+  },
+  {
+    "id": "Q2",
+    "question": "Vendor Supermicro is 10 weeks late on delivering 64 liquid-cooled GPU chassis modules. Does our MSA allow them to claim Force Majeure, or are we entitled to liquidated damages, and what is the maximum penalty cap?",
+    "expected_pattern": "P2: Parallel Hybrid",
+    "expected_tools": ["vector_search", "sql_query"],
+    "ground_truth_claims": [
+      "Force Majeure is invalid under Section 19.2 (raw material and wafer delays excluded)",
+      "Liquidated damages rate is 0.5% per week of delay (Section 18.2)",
+      "Maximum penalty cap is 10.0% of order value (Section 18.3)",
+      "PO-8821 total order value is €1,184,000.00, resulting in €59,200.00 penalty"
+    ]
+  },
+  {
+    "id": "Q3",
+    "question": "Which components in our Open Rack v3 BOM currently have ONLY ONE qualified supplier, creating a single point of failure?",
+    "expected_pattern": "P1: Deterministic Text-to-Cypher",
+    "expected_tools": ["graph_query"],
+    "ground_truth_claims": [
+      "Identifies SKU-CBL-PAM4-SPOF (Amphenol Communications)",
+      "Identifies SKU-SEC-HSM-SOV (Eviden / Atos Group)",
+      "All other components have multiple qualified suppliers"
+    ]
+  },
+  {
+    "id": "Q4",
+    "question": "Compare AMD Instinct MI300X vs NVIDIA H200 in terms of lead time, unit cost, power draw per rack, and memory bandwidth per Euro.",
+    "expected_pattern": "P4: Sequential Table-First",
+    "expected_tools": ["sql_query", "graph_query", "vector_search"],
+    "ground_truth_claims": [
+      "AMD MI300X cost €14,500 vs NVIDIA H200 cost €28,000",
+      "AMD lead time 18 weeks vs NVIDIA lead time 32 weeks",
+      "AMD OCP compliant, ROCm open software stack support"
+    ]
+  },
+  {
+    "id": "Q5",
+    "question": "An enterprise banking client requires audit proof of EU AI Act data residency and NIS2 supply chain security compliance. What certifications can we provide?",
+    "expected_pattern": "P5: Adaptive Router (Vector-Primary)",
+    "expected_tools": ["vector_search", "graph_query"],
+    "ground_truth_claims": [
+      "BSI C5:2024 sovereign cloud security attestation in Frankfurt DC-1",
+      "EU AI Act Regulation 2024/1689 compliance conformity statement",
+      "NIS2 Directive 2022/2555 cryptographic hardware verification"
+    ]
+  },
+  {
+    "id": "Q6",
+    "question": "If Primary Coolant Loop Pump B fails in Hall 1, which server racks lose secondary cooling redundancy, and does a shutdown breach our District Heating PPA?",
+    "expected_pattern": "P2: Parallel Hybrid",
+    "expected_tools": ["graph_query", "vector_search"],
+    "ground_truth_claims": [
+      "Failure of SKU-PUMP-HALL1-B impacts Cooling Loop-A",
+      "Racks Rack-01 through Rack-12 in Hall 1 lose secondary cooling redundancy",
+      "Breaches Frankfurt Municipal District Heating PPA Section 8.4",
+      "Liquidated damages of €45,000 per 24-hour period"
+    ]
+  },
+  {
+    "id": "Q7",
+    "question": "Broadcom announced a 15% price increase on 800G optical transceivers. What is our total project cost increase, can our contracts lock in old pricing, and what OCP-compliant replacements exist?",
+    "expected_pattern": "P6: Agentic Multi-Step Loop",
+    "expected_tools": ["sql_query", "vector_search", "graph_query"],
+    "ground_truth_claims": [
+      "15% cost increase on open purchase orders for SKU-OPT-800G",
+      "Contractual price lock terms under Incoterms DDP",
+      "European replacement: Molex SKU-OPT-800G-MOL"
+    ]
+  },
+  {
+    "id": "Q8",
+    "question": "Can we run Mistral-Large and Llama-3-70B on AMD MI300X servers without CUDA dependencies, and what ROCm version is certified?",
+    "expected_pattern": "P1: Deterministic Text-to-Cypher",
+    "expected_tools": ["graph_query", "vector_search"],
+    "ground_truth_claims": [
+      "Supported without CUDA dependencies using native PyTorch 2.4",
+      "Certified ROCm version 6.2 and 6.3"
+    ]
+  },
+  {
+    "id": "Q9",
+    "question": "Cooling vendor Submer has entered debt restructuring. Which in-flight rack assemblies are frozen, what warranty claims are unfulfilled, and what is our contingency plan?",
+    "expected_pattern": "P6: Agentic Multi-Step Loop",
+    "expected_tools": ["graph_query", "sql_query", "vector_search"],
+    "ground_truth_claims": [
+      "Submer manifold SKU-MAN-SUBMER-01 purchase orders frozen",
+      "Insolvency clause allows termination and escrow firmware seizure",
+      "Contingency alternative: Asetek liquid cooling manifold"
+    ]
+  },
+  {
+    "id": "Q10",
+    "question": "In the event of a total US and China trade embargo, how many months can our data center operate without new imported spare parts, which components have zero European substitutes, and what is our customer SLA liability?",
+    "expected_pattern": "P6: Agentic Multi-Step Loop",
+    "expected_tools": ["graph_query", "sql_query", "vector_search"],
+    "ground_truth_claims": [
+      "Calculates months of runway using safety stock / consumption rate",
+      "Identifies non-European silicon dependencies",
+      "Evaluates customer SLA liability under contractual clauses"
+    ]
+  }
+]

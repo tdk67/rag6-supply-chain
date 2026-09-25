@@ -1,0 +1,35 @@
+Supermicro Master Service Agreement 2026
+
+
+    Supermicro Master Service Agreement 2026
+    Document ID: MSA-SM-2026-V1.2 | Version: 1.2 | Effective Date: 2026-01-15
+    Parties: Aethelgard Sovereign Compute GmbH ("Buyer") and Super Micro Computer, Inc. (San Jose, CA) ("Supplier").
+    
+
+    Section 1: Scope of Supply & Specifications
+    1.1 Supplier agrees to manufacture, supply, and deliver the hardware components specified in Purchase Orders issued by Buyer, adhering strictly to Open Compute Project (OCP) standards and European sovereign data center specifications.
+    1.2 Primary covered components include SKU-CHAS-ORV3-SM (ORV3 8U GPU Chassis Modules) and associated HGX/OAM carrier boards.
+
+    Section 2: Delivery Schedules & Incoterms
+    2.1 All deliveries shall be executed on DDP (Delivered Duty Paid - Incoterms 2020) terms to Aethelgard Data Center DC-1, Frankfurt am Main, Germany.
+    2.2 Standard agreed lead time for production and delivery is 14 weeks from confirmed Purchase Order issuance.
+
+    Section 18: Delays & Liquidated Damages
+    18.1 Time is of the essence. In the event Supplier fails to deliver the contracted units on or before the agreed delivery date specified in the applicable Purchase Order, Supplier shall be liable for delay penalties.
+    18.2 Liquidated Damages Calculation: Supplier shall pay liquidated damages to Buyer at the rate of 0.5% of the total purchase order value per full calendar week of delay, calculated from the day following the agreed delivery date.
+    18.3 Maximum Penalty Cap: The aggregate liability for liquidated damages under any single Purchase Order shall not exceed a maximum cap of 10.0% of the total Purchase Order value.
+    18.4 Buyer shall be entitled to deduct such liquidated damages directly from any outstanding invoices or initiate immediate cash offset.
+
+    Section 19: Force Majeure
+    19.1 "Force Majeure Event" means an extraordinary event or circumstance beyond the reasonable control of the affected Party, including war, armed invasion, comprehensive maritime blockades, nationwide general strikes, earthquakes, or catastrophic natural disasters.
+    19.2 Exclusions from Force Majeure: The following occurrences shall explicitly NOT constitute Force Majeure, and Supplier shall NOT be excused from timely delivery or liquidated damages due to:
+    
+        (a) Raw material shortages, semiconductor foundry wafer allocation delays, or commercial component price fluctuations;
+        (b) Sub-tier supplier defaults, insolvency, or factory shutdowns;
+        (c) Regular maritime freight congestion or customs inspection delays.
+    
+    19.3 Notice Requirement: The affected party must provide written notice with verifiable governmental documentation within 72 hours of the occurrence.
+
+    Section 24: Warranty, Support & Insolvency
+    24.1 Supplier provides a 36-month full advance-replacement warranty on all delivered compute sleds, cooling manifolds, and power shelves.
+    24.2 Insolvency & Restructuring: If Supplier enters debt restructuring, bankruptcy, receivership, or judicial administration, Buyer reserves the immediate right to terminate any outstanding purchase orders without penalty, seize escrowed technical firmware repositories, and assert prioritized claims against Supplier's warranty reserve fund.

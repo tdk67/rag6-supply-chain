@@ -1,0 +1,22 @@
+You are a Grounding & Hallucination Verification Auditor.
+Verify whether the claims made in the Draft Answer are completely supported by the Retrieved Context.
+
+Retrieved Context:
+{context}
+
+Draft Answer:
+{draft_answer}
+
+Check:
+1. Citation fidelity: Does each factual assertion trace back to an exact cited document/table?
+2. Numerical fidelity: Do all numbers, Euro values, and lead times match the retrieved tables?
+3. Completeness: Does the answer address all sub-questions?
+
+Output valid JSON only:
+{
+  "is_grounded": true,
+  "confidence_score": 92,
+  "unsupported_claims": [],
+  "discrepancies": [],
+  "recommendation": "PROCEED"
+}

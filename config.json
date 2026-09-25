@@ -1,0 +1,56 @@
+{
+  "app": {
+    "name": "Aethelgard Infra-GraphRAG",
+    "version": "1.0.0",
+    "environment": "development"
+  },
+  "llm": {
+    "provider": "openrouter",
+    "model": "mistralai/mistral-large-2407",
+    "base_url": "https://openrouter.ai/api/v1",
+    "max_tokens": 4096,
+    "temperature": 0.1,
+    "timeout_seconds": 45,
+    "provider_routing": {
+      "order": ["Mistral", "Scaleway", "Nebius"],
+      "allow_fallbacks": true,
+      "data_collection": "deny",
+      "zdr": true
+    }
+  },
+  "embedding": {
+    "provider": "local",
+    "model": "BAAI/bge-small-en-v1.5",
+    "dimension": 384
+  },
+  "retrieval": {
+    "top_k": 5,
+    "similarity_threshold": 0.35,
+    "sql_timeout_seconds": 5
+  },
+  "agent": {
+    "max_reflection_passes": 3,
+    "query_timeout_seconds": 60,
+    "confidence_thresholds": {
+      "high": 85,
+      "medium": 60,
+      "low": 30
+    }
+  },
+  "ports": {
+    "vector_store": "chromadb",
+    "graph_store": "networkx",
+    "llm_provider": "openrouter"
+  },
+  "paths": {
+    "data_dir": "data",
+    "generated_dir": "data/generated",
+    "documents_dir": "data/documents",
+    "chroma_dir": "data/chroma_db",
+    "sqlite_db": "data/generated/infrastructure.db",
+    "graph_file": "data/generated/knowledge_graph.gpickle",
+    "bom_excel": "data/generated/bom_inventory.xlsx",
+    "templates_dir": "templates",
+    "prompts_dir": "prompts"
+  }
+}

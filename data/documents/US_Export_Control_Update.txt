@@ -1,0 +1,22 @@
+US BIS Advanced Compute & Semiconductor Export Controls Regulatory Briefing
+
+
+    US BIS Advanced Compute & Semiconductor Export Controls Regulatory Briefing
+    Bulletin ID: BUL-REG-2025-04 | Classification: DISRUPTION_BULLETIN | Published: 2025-10-30
+    Issuing Agency / Entity: US Department of Commerce, Bureau of Industry and Security (BIS)
+    
+
+    Section 1: Situation Assessment & Incident Summary
+    Updated Export Administration Regulations (EAR) tightening Total Processing Performance (TPP) and performance density thresholds for advanced AI accelerators.
+
+    Section 2: Impacted Trade Routes & Hardware Components
+    NVIDIA H200 (SKU-GPU-H200), high-density optical switches, and wafer-level testing equipment.
+
+    Section 3: Supply Chain Lead Time & Financial Forecast
+    Mandatory end-user licensing required for non-EU entities. Inspur Systems placed on Entity List (Sanctioned status).
+
+    Section 4: Contractual & Municipal Penalties
+    Civil and criminal penalties under EAR for unauthorized secondary re-export or diversion.
+
+    Section 5: Recommended Mitigation Actions
+    Prioritize European sovereign hardware and AMD ROCm open infrastructure stacks.

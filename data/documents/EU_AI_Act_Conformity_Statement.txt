@@ -1,0 +1,22 @@
+EU AI Act Sovereign Compute Infrastructure Conformity Statement
+
+
+    EU AI Act Sovereign Compute Infrastructure Conformity Statement
+    Document ID: AUD-EU-AIA-2025-01 | Attestation Release: 1.0 | Audit Date: 2025-07-01
+    Auditing Authority: European Artificial Intelligence Board Notified Body | Target Scope: Aethelgard Sovereign AI Facility DC-1 Frankfurt
+    
+
+    Section 1: Executive Compliance Attestation
+    Confirms conformity with Regulation (EU) 2024/1689 (EU AI Act) for high-risk compute deployments. Asserts data governance compliance, hardware root-of-trust isolation, and auditability.
+
+    Section 2: European Data Residency & Hardware Cryptography
+    2.1 Data Sovereignty: All customer tenant weights, telemetry data, and training checkpoints are guaranteed zero extraterritorial transmission. All physical storage drives (NVMe E1.S) remain strictly within European Union territorial boundaries.
+    2.2 Hardware Security Modules (HSM): Cryptographic root keys, tenant isolation keys, and TLS termination certificates are strictly managed by European-manufactured Sovereign Hardware Security Modules (Eviden Trustway Sovereign HSM, model SKU-SEC-HSM-SOV) certified under Common Criteria EAL4+ and BSI C5:2024 criteria.
+
+    Section 3: EU AI Act Conformity Criteria
+    3.1 Compliant with Regulation (EU) 2024/1689 (EU AI Act) Article 10 (Data and Data Governance) and Article 15 (Cybersecurity and Robustness).
+    3.2 High-risk AI systems deployed on Aethelgard compute clusters maintain continuous audit logs, automated SBOM vulnerability scanning, and isolated confidential compute domains.
+
+    Section 4: Supply Chain Security & NIS2 Directive
+    4.1 Full adherence to Directive (EU) 2022/2555 (NIS2) Chapter IV regarding supply chain cybersecurity risk management for essential and important entities.
+    4.2 Continuous vetting and multi-tier cryptographic pedigree verification for all Tier-1 and Tier-2 suppliers.

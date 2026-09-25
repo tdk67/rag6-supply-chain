@@ -1,0 +1,23 @@
+RoCEv2 800G Data Center AI Fabric Architecture Specification
+
+
+    RoCEv2 800G Data Center AI Fabric Architecture Specification
+    Document ID: SPEC-ROCE-800G-V2.0 | Standard Version: 2.0
+    Issuing Body / Author: Ultra Ethernet & Sovereign Networking Alliance | Classification: TECHNICAL_SPEC
+    
+
+    Chapter 1: Architectural Overview
+    Defines lossless RDMA over Converged Ethernet (RoCEv2) for 800Gb/s spine-leaf topologies powered by Broadcom Tomahawk 5 (SKU-SW-TH5) switching silicon and PAM4 OSFP optical transceivers.
+
+    Chapter 2: Mechanical & Thermal Specifications
+    2.1 Power Envelope: Designed for high-density AI clusters supporting up to 48kW per rack busbar at 48V DC nominal bus architecture.
+    2.2 Thermal Limits: Maximum inlet water temperature for direct-to-chip liquid cooling manifolds is 32°C. Return water temperature is maintained at 55°C to 65°C, optimized for district heating heat-exchange coupling.
+    2.3 Form Factor & Dimensions: Compliant with Open Compute Project (OCP) Open Rack v3 (ORV3) 21-inch chassis pitch and 44OU vertical space.
+
+    Chapter 3: Interconnect, Network & Memory
+    3.1 Optical Interconnects: 800Gb/s OSFP optical transceivers utilizing PAM4 modulation over DR8 parallel single-mode fiber.
+    3.2 Memory Architecture: High Bandwidth Memory (HBM3e) delivering up to 5.3 TB/s memory bandwidth per accelerator node, paired with DDR5-5600 ECC system memory.
+
+    Chapter 4: Software Stack & Driver Compatibility
+    4.1 Runtime Environment: Full open-source driver stack support including AMD ROCm 6.2 and ROCm 6.3 with PyTorch 2.4+ native kernel execution, eliminating proprietary closed-source CUDA runtime dependencies.
+    4.2 Validated Large Language Models: Validated out-of-the-box for Mistral-Large, Llama-3-70B, and Mixtral 8x22B inference and fine-tuning pipelines under standard ROCm containerized environments.

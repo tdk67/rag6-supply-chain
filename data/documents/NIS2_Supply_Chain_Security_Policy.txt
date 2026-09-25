@@ -1,0 +1,22 @@
+NIS2 Critical Infrastructure Supply Chain Security Standard & Policy
+
+
+    NIS2 Critical Infrastructure Supply Chain Security Standard & Policy
+    Document ID: POL-NIS2-SC-2025-01 | Attestation Release: 1.0 | Audit Date: 2025-05-15
+    Auditing Authority: European Union Agency for Cybersecurity (ENISA) & German BSI | Target Scope: Aethelgard Sovereign AI Facility DC-1 Frankfurt
+    
+
+    Section 1: Executive Compliance Attestation
+    Mandates mandatory cryptographic verification of hardware pedigree, firmware provenance, and supply chain vulnerability assessments pursuant to Directive (EU) 2022/2555.
+
+    Section 2: European Data Residency & Hardware Cryptography
+    2.1 Data Sovereignty: All customer tenant weights, telemetry data, and training checkpoints are guaranteed zero extraterritorial transmission. All physical storage drives (NVMe E1.S) remain strictly within European Union territorial boundaries.
+    2.2 Hardware Security Modules (HSM): Cryptographic root keys, tenant isolation keys, and TLS termination certificates are strictly managed by European-manufactured Sovereign Hardware Security Modules (Eviden Trustway Sovereign HSM, model SKU-SEC-HSM-SOV) certified under Common Criteria EAL4+ and BSI C5:2024 criteria.
+
+    Section 3: EU AI Act Conformity Criteria
+    3.1 Compliant with Regulation (EU) 2024/1689 (EU AI Act) Article 10 (Data and Data Governance) and Article 15 (Cybersecurity and Robustness).
+    3.2 High-risk AI systems deployed on Aethelgard compute clusters maintain continuous audit logs, automated SBOM vulnerability scanning, and isolated confidential compute domains.
+
+    Section 4: Supply Chain Security & NIS2 Directive
+    4.1 Full adherence to Directive (EU) 2022/2555 (NIS2) Chapter IV regarding supply chain cybersecurity risk management for essential and important entities.
+    4.2 Continuous vetting and multi-tier cryptographic pedigree verification for all Tier-1 and Tier-2 suppliers.

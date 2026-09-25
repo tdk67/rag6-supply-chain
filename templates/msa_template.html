@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{TITLE}}</title>
+</head>
+<body>
+    <h1>{{TITLE}}</h1>
+    <p><strong>Document ID:</strong> {{DOC_ID}} | <strong>Version:</strong> {{VERSION}} | <strong>Effective Date:</strong> {{EFFECTIVE_DATE}}</p>
+    <p><strong>Parties:</strong> Aethelgard Sovereign Compute GmbH ("Buyer") and {{SUPPLIER_NAME}} ("Supplier").</p>
+    <hr/>
+
+    <h2>Section 1: Scope of Supply & Specifications</h2>
+    <p>1.1 Supplier agrees to manufacture, supply, and deliver the hardware components specified in Purchase Orders issued by Buyer, adhering strictly to Open Compute Project (OCP) standards and European sovereign data center specifications.</p>
+    <p>1.2 Primary covered components include {{COVERED_COMPONENTS}}.</p>
+
+    <h2>Section 2: Delivery Schedules & Incoterms</h2>
+    <p>2.1 All deliveries shall be executed on DDP (Delivered Duty Paid - Incoterms 2020) terms to Aethelgard Data Center DC-1, Frankfurt am Main, Germany.</p>
+    <p>2.2 Standard agreed lead time for production and delivery is {{LEAD_TIME_WEEKS}} weeks from confirmed Purchase Order issuance.</p>
+
+    <h2>Section 18: Delays & Liquidated Damages</h2>
+    <p>18.1 Time is of the essence. In the event Supplier fails to deliver the contracted units on or before the agreed delivery date specified in the applicable Purchase Order, Supplier shall be liable for delay penalties.</p>
+    <p>18.2 <strong>Liquidated Damages Calculation:</strong> Supplier shall pay liquidated damages to Buyer at the rate of 0.5% of the total purchase order value per full calendar week of delay, calculated from the day following the agreed delivery date.</p>
+    <p>18.3 <strong>Maximum Penalty Cap:</strong> The aggregate liability for liquidated damages under any single Purchase Order shall not exceed a maximum cap of 10.0% of the total Purchase Order value.</p>
+    <p>18.4 Buyer shall be entitled to deduct such liquidated damages directly from any outstanding invoices or initiate immediate cash offset.</p>
+
+    <h2>Section 19: Force Majeure</h2>
+    <p>19.1 "Force Majeure Event" means an extraordinary event or circumstance beyond the reasonable control of the affected Party, including war, armed invasion, comprehensive maritime blockades, nationwide general strikes, earthquakes, or catastrophic natural disasters.</p>
+    <p>19.2 <strong>Exclusions from Force Majeure:</strong> The following occurrences shall explicitly NOT constitute Force Majeure, and Supplier shall NOT be excused from timely delivery or liquidated damages due to:</p>
+    <ul>
+        <li>(a) Raw material shortages, semiconductor foundry wafer allocation delays, or commercial component price fluctuations;</li>
+        <li>(b) Sub-tier supplier defaults, insolvency, or factory shutdowns;</li>
+        <li>(c) Regular maritime freight congestion or customs inspection delays.</li>
+    </ul>
+    <p>19.3 Notice Requirement: The affected party must provide written notice with verifiable governmental documentation within 72 hours of the occurrence.</p>
+
+    <h2>Section 24: Warranty, Support & Insolvency</h2>
+    <p>24.1 Supplier provides a 36-month full advance-replacement warranty on all delivered compute sleds, cooling manifolds, and power shelves.</p>
+    <p>24.2 <strong>Insolvency & Restructuring:</strong> If Supplier enters debt restructuring, bankruptcy, receivership, or judicial administration, Buyer reserves the immediate right to terminate any outstanding purchase orders without penalty, seize escrowed technical firmware repositories, and assert prioritized claims against Supplier's warranty reserve fund.</p>
+</body>
+</html>

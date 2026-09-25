@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{TITLE}}</title>
+</head>
+<body>
+    <h1>{{TITLE}}</h1>
+    <p><strong>Document ID:</strong> {{DOC_ID}} | <strong>Standard Version:</strong> {{VERSION}}</p>
+    <p><strong>Issuing Body / Author:</strong> {{AUTHOR}} | <strong>Classification:</strong> TECHNICAL_SPEC</p>
+    <hr/>
+
+    <h2>Chapter 1: Architectural Overview</h2>
+    <p>{{OVERVIEW_TEXT}}</p>
+
+    <h2>Chapter 2: Mechanical & Thermal Specifications</h2>
+    <p>2.1 <strong>Power Envelope:</strong> Designed for high-density AI clusters supporting up to 48kW per rack busbar at 48V DC nominal bus architecture.</p>
+    <p>2.2 <strong>Thermal Limits:</strong> Maximum inlet water temperature for direct-to-chip liquid cooling manifolds is 32°C. Return water temperature is maintained at 55°C to 65°C, optimized for district heating heat-exchange coupling.</p>
+    <p>2.3 <strong>Form Factor & Dimensions:</strong> Compliant with Open Compute Project (OCP) Open Rack v3 (ORV3) 21-inch chassis pitch and 44OU vertical space.</p>
+
+    <h2>Chapter 3: Interconnect, Network & Memory</h2>
+    <p>3.1 <strong>Optical Interconnects:</strong> 800Gb/s OSFP optical transceivers utilizing PAM4 modulation over DR8 parallel single-mode fiber.</p>
+    <p>3.2 <strong>Memory Architecture:</strong> High Bandwidth Memory (HBM3e) delivering up to 5.3 TB/s memory bandwidth per accelerator node, paired with DDR5-5600 ECC system memory.</p>
+
+    <h2>Chapter 4: Software Stack & Driver Compatibility</h2>
+    <p>4.1 <strong>Runtime Environment:</strong> Full open-source driver stack support including AMD ROCm 6.2 and ROCm 6.3 with PyTorch 2.4+ native kernel execution, eliminating proprietary closed-source CUDA runtime dependencies.</p>
+    <p>4.2 <strong>Validated Large Language Models:</strong> Validated out-of-the-box for Mistral-Large, Llama-3-70B, and Mixtral 8x22B inference and fine-tuning pipelines under standard ROCm containerized environments.</p>
+</body>
+</html>
