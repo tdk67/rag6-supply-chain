@@ -13,7 +13,7 @@ from ui.tab_decision_console import render_tab_decision_console
 from ui.tab_simulation import render_tab_simulation
 from ui.tab_analytics import render_tab_analytics
 from ui.tab_ingestion import render_tab_ingestion
-from utils.config import load_config
+from utils.config import load_config, get_secret
 
 # 1. Page Configuration & Theme
 st.set_page_config(
