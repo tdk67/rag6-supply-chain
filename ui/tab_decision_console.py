@@ -117,22 +117,38 @@ def render_tab_decision_console(persona: str = "LEGAL"):
 
         # Agent processing with live streaming status
         with st.chat_message("assistant"):
-            orch = AgentOrchestrator()
+            from ports.llm_provider.openrouter_adapter import OpenRouterAdapter
+            session_key = st.session_state.get("session_llm_key")
+            session_llm = OpenRouterAdapter(api_key=session_key) if session_key else None
+            orch = AgentOrchestrator(llm_provider=session_llm)
             
             with st.status("Executing Tri-Modal GraphRAG Loop...", expanded=True) as status_box:
                 def update_callback(msg: str):
                     status_box.write(msg)
 
-                response = orch.process_query(
-                    query=trigger_query,
-                    persona=persona,
-                    status_callback=update_callback,
-                )
-                status_box.update(
-                    label=f"Completed via {response.pattern_selected} ({response.confidence_level}, {response.confidence_score}%)",
-                    state="complete",
-                    expanded=False,
-                )
+                try:
+                    response = orch.process_query(
+                        query=trigger_query,
+                        persona=persona,
+                        status_callback=update_callback,
+                    )
+                    status_box.update(
+                        label=f"Completed via {response.pattern_selected} ({response.confidence_level}, {response.confidence_score}%)",
+                        state="complete",
+                        expanded=False,
+                    )
+                except Exception as e:
+                    status_box.update(label="Query Processing Encountered Error", state="error", expanded=True)
+                    st.error(f"⚠️ **Processing Exception**: `{str(e)}`")
+                    response = AgentResponse(
+                        query=trigger_query,
+                        pattern_selected="Error / Degradation",
+                        answer_markdown=f"### ⚠️ Engine Error Occurred\n\nThe GraphRAG engine encountered an exception during query processing:\n\n> `{str(e)}`\n\n*Please ensure all databases and knowledge graph files are initialized by running `python scripts/seed_graph.py`.*",
+                        is_complete=False,
+                        incompleteness_reason=str(e),
+                        confidence_score=0,
+                        confidence_level="REFUSED",
+                    )
 
             # Render final answer
             st.markdown(response.answer_markdown)

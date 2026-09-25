@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ports.base import LLMProviderPort
 from agent.guardrails import SafetyGuardrails
 from agent.intent_router import IntentRouter
 from agent.response_builder import (
@@ -23,6 +24,8 @@ from agent.response_builder import (
     Diagram,
     Discrepancy,
     calculate_confidence_level,
+    format_context_for_llm,
+    extract_mermaid_and_followups,
 )
 from retrieval.graph_query import GraphQueryTool
 from retrieval.sql_query import SQLQueryTool
@@ -38,13 +41,21 @@ logger = setup_logger("agent.orchestrator")
 class AgentOrchestrator:
     """Coordinates tri-modal retrieval, multi-step reflection, and citation synthesis."""
 
-    def __init__(self):
-        self.guardrails = SafetyGuardrails()
-        self.router = IntentRouter()
-        self.sql_tool = SQLQueryTool()
-        self.graph_tool = GraphQueryTool()
-        self.vector_tool = VectorSearchTool()
-        self.llm = AdapterRegistry.get_llm_provider()
+    def __init__(
+        self,
+        llm_provider: Optional[LLMProviderPort] = None,
+        guardrails: Optional[SafetyGuardrails] = None,
+        router: Optional[IntentRouter] = None,
+        sql_tool: Optional[SQLQueryTool] = None,
+        graph_tool: Optional[GraphQueryTool] = None,
+        vector_tool: Optional[VectorSearchTool] = None,
+    ):
+        self.llm = llm_provider or AdapterRegistry.get_llm_provider()
+        self.guardrails = guardrails or SafetyGuardrails(llm_provider=self.llm)
+        self.router = router or IntentRouter(llm_provider=self.llm)
+        self.sql_tool = sql_tool or SQLQueryTool(llm_provider=self.llm)
+        self.graph_tool = graph_tool or GraphQueryTool(llm_provider=self.llm)
+        self.vector_tool = vector_tool or VectorSearchTool()
 
     def process_query(
         self,
@@ -254,6 +265,7 @@ class AgentOrchestrator:
 
         cfg = load_config()
         max_reflection_passes = int(cfg.get("agent", {}).get("max_reflection_passes", 3))
+        query_timeout_seconds = float(cfg.get("agent", {}).get("query_timeout_seconds", 60.0))
         reflection_passes_count = 1
         correction_feedback = None
 
@@ -285,14 +297,19 @@ class AgentOrchestrator:
                 },
             )
 
-            # If discrepancies found, run correction pass (up to max_reflection_passes)
-            if not grounding_res.is_grounded and max_reflection_passes > 1:
+            # Multi-pass reflection loop with timeout enforcement (PRD §5.3, §13.2)
+            while not grounding_res.is_grounded and reflection_passes_count < max_reflection_passes:
+                elapsed = time.perf_counter() - t0
+                if elapsed >= query_timeout_seconds:
+                    log_step("Timeout-Breaker", {"elapsed_s": round(elapsed, 2), "timeout_s": query_timeout_seconds})
+                    break
+
                 reflection_passes_count += 1
                 correction_feedback = (
                     "Please correct the following factual or numerical mismatches in your final response:\n"
                     + "\n".join(grounding_res.discrepancies + grounding_res.unsupported_claims)
                 )
-                log_step("Reflection-Correction-Pass", {"feedback": correction_feedback})
+                log_step("Reflection-Correction-Pass", {"pass": reflection_passes_count, "feedback": correction_feedback})
                 answer_text, diagram_obj, followups = self._synthesize_answer(
                     query=query,
                     persona=persona,
@@ -321,7 +338,7 @@ class AgentOrchestrator:
             logger.warning(f"Synthesis failed, surfacing error: {error_msg}")
             log_step("Synthesis-Error", {"error": error_msg})
 
-            context_summary = self._format_context_for_llm(graph_data, sql_data, vector_chunks, discrepancies)
+            context_summary = format_context_for_llm(graph_data, sql_data, vector_chunks, discrepancies)
             answer_text = (
                 "### ⚠️ LLM Synthesis Required: API Key Not Configured or Service Unavailable\n\n"
                 f"> **Error Details:** `{error_msg}`\n\n"
@@ -359,76 +376,6 @@ class AgentOrchestrator:
             execution_trace=trace,
         )
 
-    def _format_context_for_llm(
-        self,
-        graph_data: Any,
-        sql_data: Any,
-        vector_chunks: List[Any],
-        discrepancies: List[Discrepancy],
-    ) -> str:
-        """Format tri-modal context into structured, clearly labeled prompt sections."""
-        parts = []
-
-        if sql_data:
-            parts.append(
-                f"[RELATIONAL SQL SSOT DATA] ({len(sql_data)} records returned):\n"
-                f"{json.dumps(sql_data, indent=2)}"
-            )
-
-        if graph_data:
-            parts.append(
-                f"[KNOWLEDGE GRAPH TOPOLOGY DATA]:\n"
-                f"{json.dumps(graph_data, indent=2) if isinstance(graph_data, (dict, list)) else str(graph_data)}"
-            )
-
-        if vector_chunks:
-            chunk_sections = []
-            for idx, c in enumerate(vector_chunks, start=1):
-                src = c.metadata.get("source_file", "document")
-                sec = c.metadata.get("section_heading", "General")
-                pg = c.metadata.get("page_number", 1)
-                chunk_sections.append(f"Source [{idx}] ({src}, {sec}, Page {pg}):\n{c.text}")
-            parts.append("[DOCUMENT & CONTRACTUAL CHUNKS]:\n" + "\n\n".join(chunk_sections))
-
-        if discrepancies:
-            disc_lines = [f"- {d.description} (Action: {d.recommendation})" for d in discrepancies]
-            parts.append("[DETECTED INVENTORY DISCREPANCIES (ERP vs Dock Receipt)]:\n" + "\n".join(disc_lines))
-
-        return "\n\n".join(parts) if parts else "No relevant context retrieved from database."
-
-    def _extract_mermaid_and_followups(self, raw_llm_text: str) -> tuple[str, Optional[Diagram], List[str]]:
-        """Extract optional mermaid diagram and suggested follow-up questions from LLM response."""
-        diagram = None
-        followups = []
-
-        # Extract ```mermaid ... ``` blocks
-        mermaid_match = re.search(r"```mermaid\s*(.*?)```", raw_llm_text, re.DOTALL)
-        if mermaid_match:
-            diagram_content = mermaid_match.group(1).strip()
-            diagram = Diagram(type="mermaid", content=diagram_content)
-
-        # Extract follow-up questions (bullet points ending in ? or under a follow-up header)
-        followup_section = re.search(
-            r"(?:Suggested Follow-ups?|Follow-up Questions?|Next Steps?)[:\n]+(.*?)(?=\n###|\Z)",
-            raw_llm_text,
-            re.DOTALL | re.IGNORECASE,
-        )
-        if followup_section:
-            lines = followup_section.group(1).strip().split("\n")
-            for line in lines:
-                cleaned = re.sub(r"^[-*0-9.]+\s*", "", line).strip()
-                if cleaned and len(cleaned) > 10:
-                    followups.append(cleaned)
-                    if len(followups) >= 2:
-                        break
-
-        if not followups:
-            # Fallback search for lines with questions
-            q_candidates = re.findall(r"[-*]\s*([^\n]+\?)", raw_llm_text)
-            followups = [q.strip() for q in q_candidates if len(q.strip()) > 10][:2]
-
-        return raw_llm_text, diagram, followups
-
     def _synthesize_answer(
         self,
         query: str,
@@ -441,7 +388,7 @@ class AgentOrchestrator:
         feedback: Optional[str] = None,
     ) -> tuple[str, Optional[Diagram], List[str]]:
         """Genuinely synthesize an executive grounded answer using the LLM and retrieved context."""
-        context_str = self._format_context_for_llm(graph_data, sql_data, vector_chunks, discrepancies)
+        context_str = format_context_for_llm(graph_data, sql_data, vector_chunks, discrepancies)
         discrepancy_str = (
             "\n".join([f"- {d.description} (Severity: {d.severity})" for d in discrepancies])
             if discrepancies
@@ -477,5 +424,10 @@ class AgentOrchestrator:
 
         # Call the LLM provider
         raw_output = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.1)
-        return self._extract_mermaid_and_followups(raw_output)
+        return extract_mermaid_and_followups(raw_output)
+
+    def _format_context_for_llm(self, *args, **kwargs) -> str:
+        """Backward-compatible delegate to response_builder.format_context_for_llm."""
+        return format_context_for_llm(*args, **kwargs)
+
 

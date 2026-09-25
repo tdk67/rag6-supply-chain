@@ -8,7 +8,6 @@ Saves graph to data/generated/knowledge_graph.gpickle and data/generated/knowled
 from __future__ import annotations
 
 import json
-import pickle
 import sqlite3
 import sys
 from pathlib import Path
@@ -263,10 +262,6 @@ def build_knowledge_graph() -> nx.MultiDiGraph:
     node_link_data = nx.node_link_data(G)
     with open(graph_json_path, "w", encoding="utf-8") as f:
         json.dump(node_link_data, f, indent=2)
-
-    # Optional legacy pickle compatibility file
-    with open(graph_path, "wb") as f:
-        pickle.dump(G, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     print(f"Knowledge Graph successfully built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges.")
     print(f"Graph safely serialized to JSON: {graph_json_path}")

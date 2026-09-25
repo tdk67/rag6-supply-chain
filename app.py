@@ -58,6 +58,21 @@ st.markdown(
 def main():
     cfg = load_config()
 
+    # Optional Deployment Authentication Gate (PRD §13.4, Review #2 P0-6)
+    app_token = get_secret("APP_ACCESS_TOKEN")
+    if app_token:
+        if st.session_state.get("authenticated_token") != app_token:
+            st.markdown("### 🔒 Aethelgard Infra-GraphRAG — Deployment Access Gate")
+            st.info("This instance is secured with an environment access token. Please enter the token to proceed.")
+            token_input = st.text_input("Access Token:", type="password", key="app_auth_token_input")
+            if st.button("Authenticate", type="primary"):
+                if token_input == app_token:
+                    st.session_state["authenticated_token"] = token_input
+                    st.rerun()
+                else:
+                    st.error("Invalid access token. Access denied.")
+            return
+
     # 2. Sidebar Navigation & Persona Controls
     with st.sidebar:
         st.markdown("## 🛡️ Aethelgard")
@@ -95,42 +110,51 @@ def main():
         st.markdown("### 🔑 OpenRouter API Configuration")
         from utils.config import get_secret
         from ports.llm_provider.openrouter_adapter import OpenRouterAdapter
-        from ports.registry import AdapterRegistry
 
         stored_env_key = get_secret("OPENROUTER_API_KEY") or ""
-        current_key = st.session_state.get("openrouter_api_key", stored_env_key)
+        has_env_key = bool(stored_env_key and stored_env_key.strip() not in ("", "placeholder_key", "sk-or-your-key-here"))
+
+        if has_env_key:
+            masked_env = f"sk-or-••••{stored_env_key[-4:]}" if len(stored_env_key) > 8 else "sk-or-••••"
+            st.caption(f"🔒 **Server Key Configured:** `{masked_env}`")
+
+        session_key = st.session_state.get("session_llm_key", "")
 
         api_key_input = st.text_input(
-            "OpenRouter API Key:",
-            value=current_key,
+            "Session API Key Override:",
+            value=session_key,
             type="password",
-            placeholder="sk-or-v1-...",
-            help="Enter your OpenRouter key to enable dynamic LLM synthesis. Leave blank if set in .env",
-            key="ui_api_key_input",
+            placeholder="sk-or-v1-... (optional)",
+            help="Enter a personal OpenRouter key for this browser session. If left blank, server defaults are used.",
+            key="ui_session_api_key_input",
         )
 
         col_val1, col_val2 = st.columns(2)
         with col_val1:
             if st.button("🔌 Verify Key", key="btn_validate_key", use_container_width=True):
+                check_key = api_key_input.strip() or stored_env_key
                 with st.spinner("Connecting to OpenRouter..."):
-                    valid, msg = OpenRouterAdapter.validate_api_key(api_key_input)
+                    valid, msg = OpenRouterAdapter.validate_api_key(check_key)
                     if valid:
-                        st.session_state["openrouter_api_key"] = api_key_input
-                        AdapterRegistry.set_llm_provider(OpenRouterAdapter(api_key=api_key_input))
+                        if api_key_input.strip():
+                            st.session_state["session_llm_key"] = api_key_input.strip()
                         st.success("Verified!")
                         st.caption(msg)
                     else:
                         st.error("Validation Failed")
                         st.caption(msg)
         with col_val2:
-            if api_key_input:
+            if api_key_input.strip():
                 if st.button("💾 Apply Key", key="btn_apply_key", use_container_width=True):
-                    st.session_state["openrouter_api_key"] = api_key_input
-                    AdapterRegistry.set_llm_provider(OpenRouterAdapter(api_key=api_key_input))
-                    st.success("Applied to session!")
+                    valid, msg = OpenRouterAdapter.validate_api_key(api_key_input.strip())
+                    if valid:
+                        st.session_state["session_llm_key"] = api_key_input.strip()
+                        st.success("Applied to session!")
+                    else:
+                        st.error(f"Cannot apply: {msg}")
 
-        active_key = st.session_state.get("openrouter_api_key") or stored_env_key
-        if active_key and active_key.strip() not in ("", "placeholder_key", "sk-or-your-key-here"):
+        active_has_key = bool(st.session_state.get("session_llm_key") or has_env_key)
+        if active_has_key:
             st.markdown("🟢 **Status:** Dynamic LLM Active")
         else:
             st.markdown("🟡 **Status:** Synthesis Offline (Retrieval active; enter key above)")

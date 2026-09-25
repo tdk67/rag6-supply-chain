@@ -14,9 +14,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ports.base import LLMProviderPort
 from ports.registry import AdapterRegistry
 from ports.graph_store.networkx_adapter import NetworkXAdapter
 from utils.prompt_loader import get_prompt
+from utils.logging_setup import setup_logger
+
+logger = setup_logger("retrieval.graph_query")
 
 
 class GraphQueryResult(BaseModel):
@@ -33,9 +37,9 @@ class GraphQueryResult(BaseModel):
 class GraphQueryTool:
     """Executes topology traversals and queries on the NetworkX knowledge graph."""
 
-    def __init__(self, graph_store: Optional[NetworkXAdapter] = None):
+    def __init__(self, graph_store: Optional[NetworkXAdapter] = None, llm_provider: Optional[LLMProviderPort] = None):
         self.graph_store: NetworkXAdapter = graph_store or AdapterRegistry.get_graph_store()
-        self.llm = AdapterRegistry.get_llm_provider()
+        self.llm = llm_provider or AdapterRegistry.get_llm_provider()
 
     def query(self, user_question: str) -> GraphQueryResult:
         """Route user question to deterministic traversal templates or general graph queries."""
@@ -126,8 +130,8 @@ class GraphQueryTool:
             try:
                 prompt = get_prompt("text_to_cypher.txt", {"question": user_question})
                 intent = self.llm.generate(prompt=prompt, temperature=0.0)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Dynamic text-to-cypher translation failed for '%s': %s", user_question[:50], str(e))
             stats = self.graph_store.get_stats()
             elapsed = round((time.perf_counter() - start_time) * 1000, 2)
             return GraphQueryResult(

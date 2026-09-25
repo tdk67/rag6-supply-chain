@@ -13,8 +13,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ports.base import LLMProviderPort
 from ports.registry import AdapterRegistry
 from utils.prompt_loader import get_prompt
+from utils.logging_setup import setup_logger
+
+logger = setup_logger("agent.intent_router")
 
 
 class RoutingDecision(BaseModel):
@@ -37,8 +41,8 @@ class IntentRouter:
         "P6": "P6: Agentic Multi-Step Loop",
     }
 
-    def __init__(self):
-        self.llm = AdapterRegistry.get_llm_provider()
+    def __init__(self, llm_provider: Optional[LLMProviderPort] = None):
+        self.llm = llm_provider or AdapterRegistry.get_llm_provider()
 
     def route(self, query: str) -> RoutingDecision:
         # 1. Primary: Cognitive LLM Intent Classifier (if LLM is available)
@@ -49,8 +53,21 @@ class IntentRouter:
                 "Classify the question into one of the 6 GraphRAG patterns: P1, P2, P3, P4, P5, or P6."
             )
             llm_res = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.0).strip()
+            # First look for explicit pattern token (e.g. P1, P2, etc.)
+            p_match = re.search(r"\b(P[1-6])\b", llm_res)
+            if p_match:
+                p_code = p_match.group(1)
+                p_name = self.PATTERNS.get(p_code, f"{p_code}: Dynamic Pattern")
+                tools = self._get_tools_for_pattern(p_code)
+                return RoutingDecision(
+                    pattern=p_code,
+                    pattern_name=p_name,
+                    confidence=0.92,
+                    tools_selected=tools,
+                    rationale=f"Classified via Dynamic LLM Classifier ({p_code}).",
+                )
             for p_code, p_name in self.PATTERNS.items():
-                if p_code in llm_res or p_name.lower() in llm_res.lower():
+                if p_name.lower() in llm_res.lower():
                     tools = self._get_tools_for_pattern(p_code)
                     return RoutingDecision(
                         pattern=p_code,
@@ -59,9 +76,8 @@ class IntentRouter:
                         tools_selected=tools,
                         rationale=f"Classified via Dynamic LLM Classifier ({p_code}).",
                     )
-        except Exception:
-            # LLM key missing or call failed; proceed to semantic rule classification
-            pass
+        except Exception as e:
+            logger.warning("Cognitive intent router LLM call unavailable or failed (%s); routing via heuristics", str(e))
 
         # 2. Secondary: Semantic Domain Heuristics
         lower = query.lower()

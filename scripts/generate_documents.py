@@ -348,7 +348,26 @@ def generate_all_documents():
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(strip_html_tags(content))
 
-    print(f"Generated 14 PDF and 14 TXT documents in {docs_dir}")
+    # Generate Tabular Datasets (CSV & Excel) for table_summaries collection (PRD §3.2.2, §4.4)
+    import pandas as pd
+
+    pricing_data = [
+        {"sku": "SKU-GPU-MI300X", "part_name": "AMD Instinct MI300X OAM", "supplier_name": "AMD Enterprise", "tier": "Tier-1", "unit_cost_eur": 18500.0, "lead_time_weeks": 12, "dual_source": "No", "status": "QUALIFIED"},
+        {"sku": "SKU-GPU-H200", "part_name": "NVIDIA H200 SXM5 141GB", "supplier_name": "NVIDIA Corporation", "tier": "Tier-1", "unit_cost_eur": 32000.0, "lead_time_weeks": 26, "dual_source": "No", "status": "QUALIFIED"},
+        {"sku": "SKU-OPT-800G", "part_name": "800G OSFP 2xFR4 Optical Transceiver", "supplier_name": "Broadcom GmbH", "tier": "Tier-1", "unit_cost_eur": 925.0, "lead_time_weeks": 8, "dual_source": "Yes", "status": "QUALIFIED"},
+        {"sku": "SKU-CHAS-ORV3-SM", "part_name": "Open Rack v3 21-inch 48V Sled", "supplier_name": "Supermicro Computer B.V.", "tier": "Tier-1", "unit_cost_eur": 4200.0, "lead_time_weeks": 14, "dual_source": "Yes", "status": "QUALIFIED"},
+        {"sku": "SKU-CHAS-ORV3-WI", "part_name": "Open Rack v3 Compute Tray", "supplier_name": "Wiwynn International", "tier": "Tier-1", "unit_cost_eur": 3950.0, "lead_time_weeks": 10, "dual_source": "Yes", "status": "QUALIFIED"},
+        {"sku": "SKU-PUMP-HALL1-B", "part_name": "Primary Coolant Loop Pump B", "supplier_name": "Kelvion Thermal Solutions", "tier": "Tier-1", "unit_cost_eur": 14200.0, "lead_time_weeks": 16, "dual_source": "No", "status": "QUALIFIED"},
+        {"sku": "SKU-CBL-PAM4-SPOF", "part_name": "800G DAC Direct Attach Cable", "supplier_name": "Amphenol ICC Europe", "tier": "Tier-1", "unit_cost_eur": 210.0, "lead_time_weeks": 6, "dual_source": "No", "status": "QUALIFIED"},
+        {"sku": "SKU-SEC-HSM-SOV", "part_name": "PCIe Hardware Security Module", "supplier_name": "Securosys SA", "tier": "Tier-1", "unit_cost_eur": 8500.0, "lead_time_weeks": 10, "dual_source": "No", "status": "QUALIFIED"},
+    ]
+    df_pricing = pd.DataFrame(pricing_data)
+    csv_path = docs_dir / "Supplier_Tier1_Pricing_Matrix.csv"
+    xlsx_path = docs_dir / "Supplier_Tier1_Pricing_Matrix.xlsx"
+    df_pricing.to_csv(csv_path, index=False)
+    df_pricing.to_excel(xlsx_path, index=False, sheet_name="Tier1_Pricing")
+
+    print(f"Generated 14 PDF, 14 TXT, 1 CSV, and 1 XLSX documents in {docs_dir}")
 
 
 if __name__ == "__main__":

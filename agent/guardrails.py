@@ -18,8 +18,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ports.base import LLMProviderPort
 from ports.registry import AdapterRegistry
 from utils.prompt_loader import get_prompt
+from utils.logging_setup import setup_logger
+
+logger = setup_logger("agent.guardrails")
 
 
 class GuardrailCheckResult(BaseModel):
@@ -64,8 +68,8 @@ class SafetyGuardrails:
         r"recipe\s+for",
     ]
 
-    def __init__(self):
-        self.llm = AdapterRegistry.get_llm_provider()
+    def __init__(self, llm_provider: Optional[LLMProviderPort] = None):
+        self.llm = llm_provider or AdapterRegistry.get_llm_provider()
 
     def check_pre_retrieval(self, query: str, persona: str = "LEGAL") -> GuardrailCheckResult:
         """Run pre-retrieval safety scan for injection and out-of-domain topics."""
@@ -74,6 +78,7 @@ class SafetyGuardrails:
         # 1. Deterministic Injection Pattern Check
         for pat in self.INJECTION_PATTERNS:
             if re.search(pat, lower):
+                logger.warning("Deterministic guardrail blocked injection query: %s", query[:50])
                 return GuardrailCheckResult(
                     is_safe=False,
                     status="BLOCKED_INJECTION",
@@ -84,12 +89,40 @@ class SafetyGuardrails:
         # 2. Out-of-Domain Pattern Check
         for pat in self.OUT_OF_DOMAIN_PATTERNS:
             if re.search(pat, lower):
+                logger.warning("Deterministic guardrail blocked out-of-domain query: %s", query[:50])
                 return GuardrailCheckResult(
                     is_safe=False,
                     status="BLOCKED_OUT_OF_DOMAIN",
                     warning_message="This query is outside the scope of the Sovereign Infrastructure Knowledge Base. No relevant contracts, inventory data, or architectural specifications exist for this topic.",
                     confidence=1.0,
                 )
+
+        # 3. Cognitive LLM Classifier (PRD §5.1.1)
+        try:
+            prompt = get_prompt("guardrail_injection.txt", {"query": query})
+            res_str = self.llm.generate(prompt=prompt, temperature=0.0).strip()
+            if "{" in res_str and "}" in res_str:
+                j_match = re.search(r"\{.*?\}", res_str, re.DOTALL)
+                if j_match:
+                    data = json.loads(j_match.group(0))
+                    if data.get("is_injection") or not data.get("is_safe", True):
+                        logger.warning("Cognitive LLM guardrail blocked injection query: %s", query[:50])
+                        return GuardrailCheckResult(
+                            is_safe=False,
+                            status="BLOCKED_INJECTION",
+                            warning_message=data.get("reason", "Flagged as potential injection by cognitive safety classifier."),
+                            confidence=0.95,
+                        )
+                    if data.get("is_out_of_domain"):
+                        logger.warning("Cognitive LLM guardrail blocked out-of-domain query: %s", query[:50])
+                        return GuardrailCheckResult(
+                            is_safe=False,
+                            status="BLOCKED_OUT_OF_DOMAIN",
+                            warning_message=data.get("reason", "Query determined to be outside data center and supply chain domain."),
+                            confidence=0.95,
+                        )
+        except Exception as e:
+            logger.debug("Cognitive guardrail check passed through: %s", str(e))
 
         return GuardrailCheckResult(
             is_safe=True,

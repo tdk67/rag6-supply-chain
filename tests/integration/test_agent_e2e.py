@@ -34,11 +34,13 @@ class DeterministicTestLLM(LLMProviderPort):
         lower = full_text.lower()
 
         # Intent classification prompt check
-        if "classify the following user query" in lower or "json object matching this schema" in lower:
+        if "classify" in lower or "graphrag architectural patterns" in lower:
             if "taiwan" in lower:
                 return '{"pattern": "P3", "confidence": 0.95, "reasoning": "Sequential graph-first dependency cascade"}'
             if "supermicro" in lower or "force majeure" in lower:
                 return '{"pattern": "P2", "confidence": 0.95, "reasoning": "Parallel hybrid document and contract audit"}'
+            if "po-" in lower or "dock" in lower or "receipt" in lower or "discrepanc" in lower:
+                return '{"pattern": "P4", "confidence": 0.95, "reasoning": "Sequential table-first purchase order and receipt verification"}'
             return '{"pattern": "P1", "confidence": 0.85, "reasoning": "Standard direct lookup"}'
 
         # Answer synthesis: Q1 Taiwan

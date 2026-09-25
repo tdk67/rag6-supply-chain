@@ -9,6 +9,9 @@ from chromadb.config import Settings
 
 from ports.base import VectorChunk, VectorSearchResult, VectorStorePort
 from utils.config import resolve_path, load_config
+from utils.logging_setup import setup_logger
+
+logger = setup_logger("ports.vector_store.chromadb")
 
 
 class ChromaDBAdapter(VectorStorePort):
@@ -104,33 +107,25 @@ class ChromaDBAdapter(VectorStorePort):
                 where=filter_dict if filter_dict else None,
                 include=["documents", "metadatas", "distances"],
             )
-        except Exception:
-            # Resilient fallback if HNSW index segment on disk is uncommitted
-            try:
-                get_res = col.get(where=filter_dict if filter_dict else None, include=["documents", "metadatas"])
-                if not get_res or not get_res.get("ids"):
-                    return []
-                q_words = set(query_text.lower().split())
-                candidates = []
-                for cid, doc, meta in zip(get_res["ids"], get_res["documents"], get_res["metadatas"]):
-                    doc_words = set(doc.lower().split())
-                    overlap = len(q_words.intersection(doc_words)) / max(1, len(q_words))
-                    # Base score on keyword overlap
-                    score = round(min(0.95, max(0.45, overlap)), 4)
-                    candidates.append((score, cid, doc, meta))
-                candidates.sort(key=lambda x: x[0], reverse=True)
-                for score, cid, doc, meta in candidates[:top_k]:
-                    output.append(
-                        VectorSearchResult(
-                            chunk_id=cid,
-                            doc_id=meta.get("doc_id", ""),
-                            text=doc,
-                            metadata=meta,
-                            score=score,
-                        )
+        except Exception as e:
+            if "hnsw segment reader" in str(e).lower() or "nothing found on disk" in str(e).lower():
+                try:
+                    # ChromaDB 1.5.9 Windows Rust bindings sync: refresh server bindings and retry
+                    if hasattr(self.client, "_server") and hasattr(self.client._server, "start"):
+                        self.client._server.start()
+                    fresh_col = self.client.get_collection(collection_name)
+                    self._collections[collection_name] = fresh_col
+                    results = fresh_col.query(
+                        query_texts=[query_text],
+                        n_results=top_k,
+                        where=filter_dict if filter_dict else None,
+                        include=["documents", "metadatas", "distances"],
                     )
-                return output
-            except Exception:
+                except Exception as retry_err:
+                    logger.error("ChromaDB query failed on collection '%s': %s", collection_name, str(retry_err))
+                    return []
+            else:
+                logger.error("ChromaDB query failed on collection '%s': %s", collection_name, str(e))
                 return []
 
         if not results or not results["ids"] or not results["ids"][0]:

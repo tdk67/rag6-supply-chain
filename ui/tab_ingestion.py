@@ -92,12 +92,17 @@ def render_tab_ingestion():
 
     with col_up:
         st.markdown("#### Upload Document")
-        uploaded = st.file_uploader(
-            "Select Document or Spreadsheet to Ingest (PDF, TXT, CSV, Excel)",
-            type=["pdf", "txt", "csv", "xlsx", "xls"],
-            key="file_uploader_widget",
-        )
-        version_input = st.text_input("Document Version", value="1.0", key="ingest_version_input")
+        from utils.config import get_secret
+        if get_secret("DISABLE_UPLOADS", "false").lower() in ("true", "1"):
+            st.warning("🔒 Document uploads are disabled in this public demonstration environment for safety.")
+            uploaded = None
+        else:
+            uploaded = st.file_uploader(
+                "Select Document or Spreadsheet to Ingest (PDF, TXT, CSV, Excel)",
+                type=["pdf", "txt", "csv", "xlsx", "xls"],
+                key="file_uploader_widget",
+            )
+            version_input = st.text_input("Document Version", value="1.0", key="ingest_version_input")
 
         if uploaded is not None:
             # Show preview for spreadsheet files

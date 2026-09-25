@@ -51,14 +51,20 @@ class DocumentEmbedder:
             docs_dir = resolve_path(docs_dir)
 
         summary: Dict[str, int] = {}
-        pdf_files = list(docs_dir.glob("*.pdf"))
+        target_files = []
+        for ext in ("*.pdf", "*.csv", "*.xlsx", "*.xls", "*.txt"):
+            for f in docs_dir.glob(ext):
+                # Avoid duplicate indexing if both PDF and TXT exist for the same document
+                if ext == "*.txt" and (f.with_suffix(".pdf").exists() or f.with_suffix(".csv").exists()):
+                    continue
+                target_files.append(f)
 
-        for pdf in pdf_files:
+        for doc_file in sorted(target_files):
             try:
-                cnt = self.index_document(pdf)
-                summary[pdf.name] = cnt
+                cnt = self.index_document(doc_file)
+                summary[doc_file.name] = cnt
             except Exception as e:
-                print(f"Error indexing {pdf.name}: {e}")
+                print(f"Error indexing {doc_file.name}: {e}")
 
         return summary
 

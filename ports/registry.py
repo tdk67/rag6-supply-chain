@@ -28,7 +28,10 @@ class AdapterRegistry:
             if adapter_type == "chromadb":
                 cls._vector_store = ChromaDBAdapter()
             else:
-                cls._vector_store = ChromaDBAdapter()
+                raise ValueError(
+                    f"Unknown or unsupported vector_store adapter '{adapter_type}'. "
+                    f"Configured options: ['chromadb']."
+                )
         return cls._vector_store
 
     @classmethod
@@ -39,7 +42,10 @@ class AdapterRegistry:
             if adapter_type == "networkx":
                 cls._graph_store = NetworkXAdapter()
             else:
-                cls._graph_store = NetworkXAdapter()
+                raise ValueError(
+                    f"Unknown or unsupported graph_store adapter '{adapter_type}'. "
+                    f"Configured options: ['networkx']."
+                )
         return cls._graph_store
 
     @classmethod
@@ -50,7 +56,10 @@ class AdapterRegistry:
             if adapter_type == "openrouter":
                 cls._llm_provider = OpenRouterAdapter()
             else:
-                cls._llm_provider = OpenRouterAdapter()
+                raise ValueError(
+                    f"Unknown or unsupported llm_provider adapter '{adapter_type}'. "
+                    f"Configured options: ['openrouter']."
+                )
         return cls._llm_provider
 
     @classmethod

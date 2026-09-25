@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
-import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import networkx as nx
 
 from ports.base import GraphStorePort
 from utils.config import resolve_path, load_config
+from utils.logging_setup import setup_logger
+
+logger = setup_logger("ports.graph_store.networkx")
 
 
 class NetworkXAdapter(GraphStorePort):
@@ -26,7 +28,7 @@ class NetworkXAdapter(GraphStorePort):
         self.load_graph()
 
     def load_graph(self):
-        """Load knowledge graph preferring secure JSON format over binary pickle."""
+        """Load knowledge graph securely from node-link JSON format."""
         json_file = self.graph_file if self.graph_file.suffix == ".json" else self.graph_file.with_suffix(".json")
         if json_file.exists():
             try:
@@ -35,14 +37,17 @@ class NetworkXAdapter(GraphStorePort):
                 if isinstance(data, dict) and "nodes" in data and ("links" in data or "edges" in data):
                     self.graph = nx.node_link_graph(data, multigraph=True, directed=True)
                     return
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Failed to parse knowledge graph JSON at %s: %s", json_file, str(e))
+                raise RuntimeError(
+                    f"Corrupted knowledge graph file at {json_file}. "
+                    "Please recompile the graph by executing: python scripts/seed_graph.py"
+                )
 
-        if self.graph_file.exists():
-            with open(self.graph_file, "rb") as f:
-                self.graph = pickle.load(f)
-        else:
-            self.graph = nx.MultiDiGraph()
+        raise FileNotFoundError(
+            f"Knowledge graph file not found at {json_file}. "
+            "Please initialize knowledge graph by executing: python scripts/seed_graph.py"
+        )
 
     def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
         if node_id in self.graph:

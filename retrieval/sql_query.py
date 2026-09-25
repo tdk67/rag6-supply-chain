@@ -16,9 +16,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ports.base import LLMProviderPort
 from ports.registry import AdapterRegistry
 from utils.config import resolve_path, load_config
 from utils.prompt_loader import get_prompt
+from utils.logging_setup import setup_logger
+
+logger = setup_logger("retrieval.sql_query")
 
 
 class SQLQueryResult(BaseModel):
@@ -36,7 +40,7 @@ class SQLQueryResult(BaseModel):
 class SQLQueryTool:
     """Executes deterministic read-only SQL queries against infrastructure.db."""
 
-    def __init__(self, db_path: Optional[str | Path] = None):
+    def __init__(self, db_path: Optional[str | Path] = None, llm_provider: Optional[LLMProviderPort] = None):
         if db_path is not None:
             self.db_path = resolve_path(db_path)
         else:
@@ -45,7 +49,7 @@ class SQLQueryTool:
 
         cfg = load_config()
         self.timeout_sec = float(cfg.get("retrieval", {}).get("sql_timeout_seconds", 5))
-        self.llm = AdapterRegistry.get_llm_provider()
+        self.llm = llm_provider or AdapterRegistry.get_llm_provider()
 
     def _sanitize_query(self, sql: str) -> str:
         """Strip markdown fences, reject multiple statements, mutations, and non-SELECT roots."""
@@ -75,6 +79,11 @@ class SQLQueryTool:
         # Allow-list query starting keyword
         if not re.match(r"^(SELECT|WITH)\b", clean, re.IGNORECASE):
             raise ValueError("Forbidden SQL query: Only read-only SELECT or WITH statements are allowed.")
+
+        # Ensure query references at least one domain table (components, suppliers, purchase_orders, dock_receipts, document_registry)
+        domain_tables = ["components", "suppliers", "purchase_orders", "dock_receipts", "document_registry"]
+        if not any(re.search(rf"\b{tbl}\b", clean, re.IGNORECASE) for tbl in domain_tables):
+            raise ValueError("Query does not reference any known supply chain database tables.")
 
         return clean
 
@@ -178,8 +187,20 @@ class SQLQueryTool:
             res = self.execute_raw(generated_sql)
             if res.success:
                 return res
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Dynamic text-to-SQL translation failed for query '%s': %s", user_question[:50], str(e))
 
-        # Generic safe fallback query
-        return self.execute_raw("SELECT * FROM purchase_orders LIMIT 5")
+        # Do not fabricate or launder irrelevant rows into evidence
+        return SQLQueryResult(
+            success=False,
+            query_executed="",
+            row_count=0,
+            columns=[],
+            rows=[],
+            dataframe_json="[]",
+            error_message=f"No matching SQL domain template or valid text-to-SQL translation found.",
+        )
+
+    # Alias for backward-compatibility with tests calling tool.query()
+    query = text_to_sql_query
+

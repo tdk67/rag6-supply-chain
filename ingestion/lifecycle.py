@@ -42,6 +42,7 @@ class DocumentLifecycleManager:
         version: str = "1.0",
         classification: Optional[str] = None,
         effective_date: Optional[str] = None,
+        total_chunks: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Register a new document in the SQLite SSOT registry with duplicate SHA-256 check."""
         path = resolve_path(file_path)
@@ -49,6 +50,12 @@ class DocumentLifecycleManager:
         file_hash = parsed.sha256_hash
         cls_val = classification or parsed.classification
         eff_date = effective_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        if total_chunks is None:
+            from ingestion.chunker import chunk_document
+            actual_chunks = len(chunk_document(parsed))
+        else:
+            actual_chunks = int(total_chunks)
 
         conn = self._get_connection()
         cur = conn.cursor()
@@ -86,7 +93,7 @@ class DocumentLifecycleManager:
                 cls_val,
                 file_hash,
                 parsed.total_pages,
-                len(parsed.pages) * 2,  # estimated chunk count
+                actual_chunks,
                 now_iso,
             ),
         )
