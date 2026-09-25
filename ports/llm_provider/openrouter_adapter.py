@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any, Dict, List, Optional
 import httpx
 
@@ -18,6 +19,8 @@ class OpenRouterAdapter(LLMProviderPort):
         self.model = cfg.get("llm", {}).get("model", "mistralai/mistral-large-2407")
         self.base_url = cfg.get("llm", {}).get("base_url", "https://openrouter.ai/api/v1")
         self.timeout = float(cfg.get("llm", {}).get("timeout_seconds", 45))
+        self.max_retries = int(cfg.get("llm", {}).get("retries", 3))
+        self.retry_backoff = float(cfg.get("llm", {}).get("retry_backoff_seconds", 2))
         self.provider_routing = cfg.get("llm", {}).get("provider_routing", {})
 
         # Private secret strictly from .env
@@ -65,22 +68,44 @@ class OpenRouterAdapter(LLMProviderPort):
         if self.provider_routing:
             payload["provider"] = self.provider_routing
 
-        try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
-                if resp.status_code != 200:
-                    err_msg = resp.text
-                    try:
-                        err_json = resp.json()
-                        err_msg = err_json.get("error", {}).get("message", resp.text)
-                    except Exception:
-                        pass
-                    raise RuntimeError(f"OpenRouter API error (HTTP {resp.status_code}): {err_msg}")
+        last_error: Optional[str] = None
 
-                data = resp.json()
-                return data["choices"][0]["message"]["content"]
-        except httpx.RequestError as e:
-            raise RuntimeError(f"OpenRouter network connection error: {str(e)}")
+        last_error: Optional[str] = None
+        for attempt in range(self.max_retries):
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    resp = client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                    if resp.status_code != 200:
+                        err_msg = resp.text
+                        try:
+                            err_json = resp.json()
+                            err_msg = err_json.get("error", {}).get("message", resp.text)
+                            # OpenRouter wraps upstream provider failures as HTTP 200 + provider.error
+                            if err_json.get("provider", {}).get("error"):
+                                err_msg = err_json["provider"]["error"].get("message", err_msg)
+                        except Exception:
+                            pass
+
+                        # Transient upstream 429s (shared-pool rate limits) are retried with backoff
+                        retriable = resp.status_code == 429 or ("429" in str(err_msg))
+                        if retriable and attempt < self.max_retries - 1:
+                            last_error = err_msg
+                            time.sleep(self.retry_backoff * (attempt + 1))
+                            continue
+                        raise RuntimeError(f"OpenRouter API error (HTTP {resp.status_code}): {err_msg}")
+
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"]
+            except httpx.RequestError as e:
+                last_error = str(e)
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_backoff * (attempt + 1))
+                    continue
+                raise RuntimeError(f"OpenRouter network connection error: {str(e)}")
+
+        raise RuntimeError(
+            f"OpenRouter API failed after {self.max_retries} attempts (HTTP 429): {last_error}"
+        )
 
     @staticmethod
     def validate_api_key(api_key: str, base_url: str = "https://openrouter.ai/api/v1") -> tuple[bool, str]:

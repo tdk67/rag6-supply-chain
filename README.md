@@ -325,7 +325,8 @@ python scripts/evaluate_rag.py
 | Symptom | Cause | Fix |
 |---|---|---|
 | Answers show “⚠️ LLM Synthesis Required … API Key Not Configured” with raw retrieved data below | No usable `OPENROUTER_API_KEY` | Enter a key in the sidebar (**Verify Key** first) or add it to `.env`, then rerun the query. Retrieval, citations, and the execution trace remain fully functional without a key |
-| Error details show `HTTP 429` from OpenRouter | Key valid but out of credits / rate-limited | Top up the key or switch provider routing in `config.json`; the agent surfaces the provider error verbatim instead of faking an answer |
+| Answers stop with **⛔ Synthesis Failed** and an error banner | The retrieval layer ran, but LLM answer synthesis failed (missing/invalid key, provider 429, or network error) | The app intentionally **stops at the error** — no simulated or template answer is shown. Verify the key in the sidebar, check the provider/model in `config.json`, and retry |
+| Error details show `HTTP 429` from OpenRouter | **Shared-pool rate limit on the upstream provider** (not a credit issue) or transient provider saturation | The adapter now **auto-retries transient 429s** (3 attempts, backoff). If it persists, the provider pool itself is saturated — try again shortly or switch model/provider routing in `config.json`; the agent surfaces the provider error verbatim instead of faking an answer |
 | `UnpicklingError` or graph-load traceback at startup or in tests | Stale `data/generated/` artifacts from an older checkout | Re-run the generation pipeline: `python scripts/generate_bom.py && python scripts/seed_graph.py && python ingestion/embedder.py` |
 | Tests fail on a fresh clone | Generated datasets are not in git by design | Run the step-3 generation commands, then `python -m pytest tests/` |
 | `table_summaries` collection shows 0 chunks | No seed document is tabular yet | Upload a `.csv`/`.xlsx` via Tab 4 — tabular parsing maps into that collection |
