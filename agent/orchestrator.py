@@ -333,27 +333,31 @@ class AgentOrchestrator:
             log_step("Complete", {"summary": f"Generated final response ({confidence_level}, {confidence_score}%)"})
 
         except Exception as e:
-            # NO SILENT FAKES. Surface the actual error and provide real context
+            # NO SILENT FAKES. Stop at the error - show exactly what went wrong, no simulated result.
             error_msg = str(e)
             logger.warning(f"Synthesis failed, surfacing error: {error_msg}")
             log_step("Synthesis-Error", {"error": error_msg})
 
+            steps_summary = ", ".join(
+                f"{item.get('step', '?')} ({item.get('summary', '')[:60]})" for item in trace
+            ).strip() or "(no steps recorded)"
             context_summary = format_context_for_llm(graph_data, sql_data, vector_chunks, discrepancies)
             answer_text = (
-                "### ⚠️ LLM Synthesis Required: API Key Not Configured or Service Unavailable\n\n"
-                f"> **Error Details:** `{error_msg}`\n\n"
-                "The agent successfully retrieved **real tri-modal context** from the local SSOT, but cannot generate natural-language executive prose without an active LLM provider.\n\n"
+                "### ⛔ Synthesis Failed\n\n"
+                "> **Error:** "
+                + error_msg.replace("\n", " ")  # single-line, no markdown abuse
+                + "\n\n"
+                "### ⚠️ LLM Synthesis Required\n"
+                "The retrieval layer succeeded, but executive answer synthesis requires a configured and reachable OpenRouter LLM provider (no offline/local template fallback is used).\n\n"
                 "**How to resolve:**\n"
-                "1. **Streamlit UI**: Enter a valid **OpenRouter API Key** in the sidebar settings panel (with real-time connection validation), OR\n"
-                "2. **Environment File**: Add `OPENROUTER_API_KEY=your_key_here` to your local `.env` file.\n\n"
-                "---\n"
-                "#### 📊 Real Retrieved Grounding Context from Local SSOT:\n"
-                f"```text\n{context_summary[:1800]}\n```\n"
+                "1. **Streamlit UI** → sidebar → enter a valid **OpenRouter API Key** and click **Verify Key**, or\n"
+                "2. **Environment File** → add `OPENROUTER_API_KEY=your_key_here` to your local `.env`, restart, retry.\n\n"
+                f"**Steps completed before failure:** {steps_summary}"
             )
             diagram_obj = None
             followups = [
                 "How do I enter my OpenRouter API Key in the UI sidebar?",
-                "Which local models are supported for offline synthesis?",
+                "Which LLM provider is configured and how do I verify it?",
             ]
             confidence_score = 0
             confidence_level = "REFUSED"
