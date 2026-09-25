@@ -14,6 +14,7 @@ from ui.tab_simulation import render_tab_simulation
 from ui.tab_analytics import render_tab_analytics
 from ui.tab_ingestion import render_tab_ingestion
 from utils.config import load_config, get_secret
+from utils.data_bootstrap import dataset_status, generate_all_data, missing_summary
 from ports.registry import AdapterRegistry
 from ports.llm_provider.openrouter_adapter import OpenRouterAdapter
 
@@ -172,10 +173,42 @@ def main():
 
     # 3. Main Header
     st.markdown("<div class='main-header'>Aethelgard Infra-GraphRAG</div>", unsafe_allow_html=True)
-    st.markdown(
-        "<div class='sub-header'>Tri-Modal Sovereign Infrastructure & Supply Chain Disruption Intelligence Engine</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown("<div class='sub-header'>Tri-Modal Sovereign Infrastructure & Supply Chain Disruption Intelligence Engine</div>", unsafe_allow_html=True)
+
+    # 1.5 First-run dataset provisioning (serverless / ephemeral deployments)
+    # On hosts where data/ is not shipped with the repo, the SQLite SSOT, knowledge
+    # graph files, and Chroma vector index are empty on first boot. Offer an explicit
+    # one-click generate screen instead of crashing on a missing graph file.
+    status = dataset_status()
+    if not status["provisioned"]:
+        st.title("⚙️ First-Run Dataset Setup")
+        st.markdown(
+            "The local knowledge base has not been provisioned yet on this instance. "
+            "Generate the synthetic supply-chain dataset (SQLite SSOT, contracts, knowledge "
+            "graph, and vector index) to activate the engine."
+        )
+        st.info(
+            f"Missing: {missing_summary(status)}.\n\n"
+            "Generation is deterministic and takes roughly a minute. "
+            "In serverless deployments the generated files live in the ephemeral "
+            "filesystem and vanish on instance restart — just click Generate again."
+        )
+        if st.button("⚡ Generate Dataset", type="primary", use_container_width=True):
+            status_ph = st.empty()
+            def _progress(stage: str):
+                status_ph.info(stage)
+            try:
+                generate_all_data(progress_cb=_progress)
+                status_ph.success("Dataset generated successfully. Initializing engine...")
+                st.rerun()
+            except Exception as e:  # pragma: no cover - surfaced for operator debugging
+                status_ph.error(f"Dataset generation failed: {e}")
+        st.caption(
+            "Alternatively run in a terminal: `python scripts/generate_bom.py && "
+            "python scripts/generate_documents.py && python scripts/seed_graph.py && "
+            "python ingestion/embedder.py`"
+        )
+        st.stop()
 
     # 4. Tab Navigation
     tab1, tab2, tab3, tab4 = st.tabs([

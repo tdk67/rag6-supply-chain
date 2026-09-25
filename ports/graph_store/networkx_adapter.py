@@ -28,7 +28,13 @@ class NetworkXAdapter(GraphStorePort):
         self.load_graph()
 
     def load_graph(self):
-        """Load knowledge graph securely from node-link JSON format."""
+        """Load knowledge graph securely from node-link JSON format.
+
+        If the graph file does not exist yet (e.g. first boot on a serverless
+        deployment where data/ is generated on demand), the adapter starts with
+        an empty in-memory graph instead of failing. Once the dataset is
+        generated, callers obtain a new adapter instance to pick up the files.
+        """
         json_file = self.graph_file if self.graph_file.suffix == ".json" else self.graph_file.with_suffix(".json")
         if json_file.exists():
             try:
@@ -37,16 +43,18 @@ class NetworkXAdapter(GraphStorePort):
                 if isinstance(data, dict) and "nodes" in data and ("links" in data or "edges" in data):
                     self.graph = nx.node_link_graph(data, multigraph=True, directed=True)
                     return
+                logger.warning("Knowledge graph file %s has no usable node/link data; starting with empty graph.", json_file)
+                self.graph = nx.MultiDiGraph()
             except Exception as e:
                 logger.error("Failed to parse knowledge graph JSON at %s: %s", json_file, str(e))
-                raise RuntimeError(
-                    f"Corrupted knowledge graph file at {json_file}. "
-                    "Please recompile the graph by executing: python scripts/seed_graph.py"
-                )
+                logger.warning("Starting with an empty knowledge graph. Regenerate via the Generate Dataset action.")
+                self.graph = nx.MultiDiGraph()
+            return
 
-        raise FileNotFoundError(
-            f"Knowledge graph file not found at {json_file}. "
-            "Please initialize knowledge graph by executing: python scripts/seed_graph.py"
+        logger.warning(
+            "Knowledge graph file not found at %s. Starting with an empty graph; "
+            "generate the dataset from the app UI or run: python scripts/seed_graph.py",
+            json_file,
         )
 
     def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
