@@ -35,12 +35,16 @@ wheels/
 htmlcov/
 coverage.xml
 
-# Databases & local stores
+# Generated documents, datasets & local stores
+data/documents/*
+!data/documents/.gitkeep
+data/generated/*
+!data/generated/.gitkeep
+data/chroma_db/
 *.db
 *.sqlite3
-data/chroma_db/
-data/generated/
 *.gpickle
+*.xlsx
 
 # Streamlit
 .streamlit/
