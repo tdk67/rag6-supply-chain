@@ -28,6 +28,7 @@ from retrieval.graph_query import GraphQueryTool
 from retrieval.sql_query import SQLQueryTool
 from retrieval.vector_search import VectorSearchTool
 from ports.registry import AdapterRegistry
+from utils.config import load_config
 from utils.prompt_loader import get_prompt
 from utils.logging_setup import setup_logger
 
@@ -174,31 +175,87 @@ class AgentOrchestrator:
                     retrieved_texts.append(c.text)
 
         # -------------------------------------------------------------
-        # STEP 4: Pass 2 Inspection & Evaluation (Grounding & Discrepancies)
+        # STEP 4: OOD & Zero Evidence Check (PRD §5.1.3)
+        # -------------------------------------------------------------
+        has_graph_evidence = bool(graph_data) and (
+            not isinstance(graph_data, dict)
+            or graph_data.get("count", 0) > 0
+            or graph_data.get("suppliers")
+            or graph_data.get("compatible_stacks")
+            or graph_data.get("total_racks_affected", 0) > 0
+        )
+        has_sql_evidence = bool(sql_data) and len(sql_data) > 0
+        has_vector_evidence = bool(vector_chunks) and len(vector_chunks) > 0
+
+        if not has_graph_evidence and not has_sql_evidence and not has_vector_evidence:
+            log_step("OOD-Refusal", {"summary": "Zero evidence found in local SSOT - refusing out-of-domain query"})
+            return AgentResponse(
+                answer_markdown=(
+                    "### 🚫 Query Out of Domain\n\n"
+                    "No relevant data center hardware, contracts, inventory, or compliance records were found in the Sovereign Infrastructure Knowledge Base for this query.\n\n"
+                    "**Supported Domain Areas:**\n"
+                    "- Sovereign AI data center hardware (MI300X, H200, chassis, transceivers, cooling loops)\n"
+                    "- Multi-tier supply chains and geopolitical freight corridor risk (Taiwan, TSMC, Amphenol)\n"
+                    "- Commercial contracts, Force Majeure clauses, and liquidated damages penalties\n"
+                    "- Regulatory standards (BSI C5:2024, EU AI Act, NIS2 Directive)"
+                ),
+                confidence_score=15,
+                confidence_level="REFUSED",
+                is_complete=False,
+                incompleteness_reason="Out of domain: zero grounding evidence found in SSOT databases.",
+                tools_used=tools_executed,
+                pattern_selected=routing.pattern_name,
+                reflection_passes=1,
+                suggested_followups=[
+                    "Which components in our Open Rack v3 BOM have only one qualified supplier?",
+                    "If geopolitical conflict disrupts freight routes out of Taiwan, what is our total affected order value?",
+                ],
+                citations=[],
+                execution_trace=trace,
+            )
+
+        # -------------------------------------------------------------
+        # STEP 5: Pass 2 Inspection & Data-Driven Discrepancy Auditing (Trap 2)
         # -------------------------------------------------------------
         log_step("Pass-2-Inspection", {"summary": "Auditing data discrepancies and checking math consistency"})
 
-        # Check Trap 2: Discrepancy Auditing (e.g., PO-8821 vs dock receipt REC-104)
-        if "8821" in query or "discrepan" in query.lower() or "supermicro" in query.lower() or "dock" in query.lower():
-            disc_check = self.sql_tool.execute_raw(
-                "SELECT d.receipt_id, d.po_number, d.units_received, po.quantity, d.discrepancy_notes "
-                "FROM dock_receipts d JOIN purchase_orders po ON d.po_number = po.po_number "
-                "WHERE d.discrepancy_flag = 1"
-            )
-            if disc_check.rows:
-                for row in disc_check.rows[:2]:
+        # General ERP vs Dock Receipt reconciliation
+        disc_check = self.sql_tool.execute_raw(
+            "SELECT d.receipt_id, d.po_number, po.sku, po.quantity, d.units_received, d.discrepancy_notes "
+            "FROM dock_receipts d JOIN purchase_orders po ON d.po_number = po.po_number "
+            "WHERE d.discrepancy_flag = 1 OR d.units_received < po.quantity"
+        )
+        if disc_check.rows:
+            relevant_pos = set()
+            if sql_data:
+                for r in sql_data:
+                    if r.get("po_number"):
+                        relevant_pos.add(str(r["po_number"]).upper())
+            for row in disc_check.rows:
+                row_po = str(row["po_number"]).upper()
+                # Attach if query explicitly mentions discrepancies/orders or if matched in SQL data
+                if (
+                    row_po in relevant_pos
+                    or row_po in query.upper()
+                    or any(k in query.lower() for k in ("discrepan", "receipt", "dock", "shortfall", "late", "supermicro", "8821", "audit"))
+                ):
                     discrepancies.append(
                         Discrepancy(
-                            description=f"Purchase Order {row['po_number']} specifies {row['quantity']} units, but Dock Receipt {row['receipt_id']} records only {row['units_received']} delivered ({row.get('discrepancy_notes', 'Discrepancy flagged')}).",
+                            description=f"Purchase Order {row['po_number']} ({row.get('sku', '')}) specifies {row['quantity']} units, but Dock Receipt {row['receipt_id']} records only {row['units_received']} units received ({row.get('discrepancy_notes', 'Delivery discrepancy flagged')}).",
                             severity="HIGH",
                             recommendation="Audit physical inventory in Frankfurt DC-1 Cold Storage before executing final liquidated damages deductions.",
                         )
                     )
 
         # -------------------------------------------------------------
-        # STEP 5: Pass 3 Synthesis (Dynamic LLM Generation)
+        # STEP 6: Pass 3 Synthesis & Multi-Pass Reflection Loop (PRD §5.3)
         # -------------------------------------------------------------
         log_step("Pass-3-Synthesis", {"summary": "Synthesizing executive answer via LLM with context grounding"})
+
+        cfg = load_config()
+        max_reflection_passes = int(cfg.get("agent", {}).get("max_reflection_passes", 3))
+        reflection_passes_count = 1
+        correction_feedback = None
 
         try:
             answer_text, diagram_obj, followups = self._synthesize_answer(
@@ -209,8 +266,50 @@ class AgentOrchestrator:
                 sql_data=sql_data,
                 vector_chunks=vector_chunks,
                 discrepancies=discrepancies,
+                feedback=correction_feedback,
             )
-            confidence_score = 94 if citations else 70
+
+            # Post-retrieval grounding & math verification (PRD §5.1.2)
+            grounding_res = self.guardrails.check_post_retrieval_grounding(
+                draft_answer=answer_text,
+                context_chunks=retrieved_texts,
+                sql_results=sql_data,
+            )
+            log_step(
+                "Post-Grounding-Check",
+                {
+                    "math_verified": grounding_res.math_verified,
+                    "discrepancies": grounding_res.discrepancies,
+                    "unsupported_claims": grounding_res.unsupported_claims,
+                    "computed_confidence": grounding_res.confidence_score,
+                },
+            )
+
+            # If discrepancies found, run correction pass (up to max_reflection_passes)
+            if not grounding_res.is_grounded and max_reflection_passes > 1:
+                reflection_passes_count += 1
+                correction_feedback = (
+                    "Please correct the following factual or numerical mismatches in your final response:\n"
+                    + "\n".join(grounding_res.discrepancies + grounding_res.unsupported_claims)
+                )
+                log_step("Reflection-Correction-Pass", {"feedback": correction_feedback})
+                answer_text, diagram_obj, followups = self._synthesize_answer(
+                    query=query,
+                    persona=persona,
+                    pattern=routing.pattern_name,
+                    graph_data=graph_data,
+                    sql_data=sql_data,
+                    vector_chunks=vector_chunks,
+                    discrepancies=discrepancies,
+                    feedback=correction_feedback,
+                )
+                grounding_res = self.guardrails.check_post_retrieval_grounding(
+                    draft_answer=answer_text,
+                    context_chunks=retrieved_texts,
+                    sql_results=sql_data,
+                )
+
+            confidence_score = grounding_res.confidence_score if citations else min(grounding_res.confidence_score, 65)
             confidence_level = calculate_confidence_level(confidence_score)
             is_complete = True
             incompleteness_reason = None
@@ -252,7 +351,7 @@ class AgentOrchestrator:
             incompleteness_reason=incompleteness_reason,
             tools_used=tools_executed,
             pattern_selected=routing.pattern_name,
-            reflection_passes=2,
+            reflection_passes=reflection_passes_count,
             suggested_followups=followups,
             citations=citations,
             diagram=diagram_obj,
@@ -339,6 +438,7 @@ class AgentOrchestrator:
         sql_data: Any,
         vector_chunks: List[Any],
         discrepancies: List[Discrepancy],
+        feedback: Optional[str] = None,
     ) -> tuple[str, Optional[Diagram], List[str]]:
         """Genuinely synthesize an executive grounded answer using the LLM and retrieved context."""
         context_str = self._format_context_for_llm(graph_data, sql_data, vector_chunks, discrepancies)
@@ -358,16 +458,22 @@ class AgentOrchestrator:
                 "discrepancies": discrepancy_str,
             },
         )
-        system_prompt = (
-            "You are Aethelgard Infra-GraphRAG, an autonomous intelligence engine for European sovereign AI data centers.\n"
-            "Strict Instructions:\n"
-            "1. Ground all numbers, supplier names, component SKUs, and legal clauses strictly in the provided context.\n"
-            "2. Never invent or hallucinate facts not present in the context.\n"
-            "3. Embed numeric footnote citations like [1], [2] next to every specific claim.\n"
-            "4. Structure your response with executive markdown headings and bullet points.\n"
-            "5. If helpful, include a concise Mermaid diagram illustrating the relationship, failure cascade, or topology inside ```mermaid ... ``` code blocks.\n"
-            "6. End with a '### Suggested Follow-ups' section containing 2 logical next questions."
-        )
+        if feedback:
+            prompt += f"\n\n[INSPECTION CORRECTION DIRECTIVE]:\n{feedback}\nPlease adjust your previous claims to accurately align with the SSOT records above."
+
+        try:
+            system_prompt = get_prompt("system_prompt.txt")
+        except Exception:
+            system_prompt = (
+                "You are Aethelgard Infra-GraphRAG, an autonomous intelligence engine for European sovereign AI data centers.\n"
+                "Strict Instructions:\n"
+                "1. Ground all numbers, supplier names, component SKUs, and legal clauses strictly in the provided context.\n"
+                "2. Never invent or hallucinate facts not present in the context.\n"
+                "3. Embed numeric footnote citations like [1], [2] next to every specific claim.\n"
+                "4. Structure your response with executive markdown headings and bullet points.\n"
+                "5. If helpful, include a concise Mermaid diagram illustrating the relationship, failure cascade, or topology inside ```mermaid ... ``` code blocks.\n"
+                "6. End with a '### Suggested Follow-ups' section containing 2 logical next questions."
+            )
 
         # Call the LLM provider
         raw_output = self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.1)

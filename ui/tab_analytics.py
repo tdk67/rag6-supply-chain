@@ -6,13 +6,13 @@ discrepancy alert feeds, and interactive PyVis / Mermaid knowledge graph visuali
 
 from __future__ import annotations
 
-import sqlite3
 import streamlit as st
 import pandas as pd
 from pathlib import Path
 from typing import Dict, Any
 
 from ports.registry import AdapterRegistry
+from services.analytics_service import AnalyticsService
 from utils.config import resolve_path, load_config
 
 
@@ -95,29 +95,8 @@ def generate_pyvis_network_html(max_nodes: int = 50) -> str:
 
 
 def get_analytics_metrics() -> Dict[str, Any]:
-    """Retrieve operational KPIs from SQLite and ChromaDB."""
-    cfg = load_config()
-    db_path = resolve_path(cfg["paths"]["sqlite_db"])
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-
-    total_components = cur.execute("SELECT COUNT(*) FROM components").fetchone()[0]
-    total_val = cur.execute("SELECT SUM(total_val_eur) FROM purchase_orders").fetchone()[0] or 0.0
-    total_docs = cur.execute("SELECT COUNT(*) FROM document_registry WHERE is_active = 1").fetchone()[0]
-    disc_count = cur.execute("SELECT COUNT(*) FROM dock_receipts WHERE discrepancy_flag = 1").fetchone()[0]
-    conn.close()
-
-    graph_adapter = AdapterRegistry.get_graph_store()
-    g_stats = graph_adapter.get_stats()
-
-    return {
-        "total_components": total_components,
-        "total_val_eur": total_val,
-        "total_docs": total_docs,
-        "graph_nodes": g_stats["total_nodes"],
-        "graph_edges": g_stats["total_edges"],
-        "discrepancies": disc_count,
-    }
+    """Retrieve operational KPIs via AnalyticsService."""
+    return AnalyticsService().get_operational_metrics()
 
 
 def render_tab_analytics():
@@ -125,7 +104,8 @@ def render_tab_analytics():
     st.markdown("### 📊 Sovereign Infrastructure & RAG Analytics")
     st.caption("Live operational intelligence, hardware topology metrics, and supply chain telemetry.")
 
-    metrics = get_analytics_metrics()
+    analytics_svc = AnalyticsService()
+    metrics = analytics_svc.get_operational_metrics()
 
     # Top Metric Tiles (Hero section)
     c1, c2, c3, c4 = st.columns(4)
@@ -166,13 +146,6 @@ def render_tab_analytics():
         st.bar_chart(pattern_data.set_index("Pattern"), color="#3B82F6")
 
         st.markdown("#### ⚠️ Discrepancy Alert Feed (Trap 2 Auditing)")
-        cfg = load_config()
-        conn = sqlite3.connect(resolve_path(cfg["paths"]["sqlite_db"]))
-        disc_df = pd.read_sql_query(
-            "SELECT d.receipt_id, d.po_number, d.units_received, d.discrepancy_notes "
-            "FROM dock_receipts d WHERE d.discrepancy_flag = 1 LIMIT 4",
-            conn,
-        )
-        conn.close()
+        disc_df = analytics_svc.get_discrepancy_feed(limit=4)
         for _, row in disc_df.iterrows():
             st.warning(f"**{row['receipt_id']} ({row['po_number']})**: {row['discrepancy_notes']}")

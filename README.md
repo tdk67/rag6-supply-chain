@@ -1,176 +1,316 @@
 # Aethelgard Infra-GraphRAG
-**A Tri-Modal Sovereign Infrastructure & Supply Chain Intelligence Engine**
+**A Sovereign AI Infrastructure & Supply Chain Intelligence Engine**
 
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Architecture: Tri-Modal](https://img.shields.io/badge/Architecture-Tri--Modal%20GraphRAG-purple.svg)](#architecture)
-[![Testing: Pytest](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)](#testing)
+[![Architecture: Tri-Modal GraphRAG](https://img.shields.io/badge/Architecture-Tri--Modal%20GraphRAG-purple.svg)](#system-architecture)
+[![Tests: 28 Passed](https://img.shields.io/badge/Tests-28%20Passed%20(100%25)-brightgreen.svg)](#testing--verification)
+[![Strict Transparency](https://img.shields.io/badge/Engineering-Zero%20Silent%20Fallbacks-orange.svg)](#strict-engineering-principles-no-fakes--no-silent-fallbacks)
 
 ---
 
-## 1. Executive Summary
+## 1. What the Application Does
 
-Sovereign AI data center operators are frequently paralyzed by fragmented information silos between multi-tier hardware dependency graphs, complex legal supplier contracts, and volatile inventory spreadsheets. When global supply chain shocks hit (e.g. maritime route blocks, export restrictions, supplier restructuring), evaluating the operational, legal, and financial blast radius can take weeks.
+Modern sovereign AI data center operators operate in high-stakes environments where hardware procurement, multi-tier dependency networks, and complex legal obligations are deeply intertwined. When sudden disruptions strike—such as maritime route closures in East Asia, critical component single-source failures, or supplier restructuring—evaluating the operational, legal, and financial blast radius traditionally requires weeks of cross-departmental coordination.
 
-**Aethelgard Infra-GraphRAG** solves this crisis through an autonomous, tri-modal Agentic GraphRAG system that unites:
-1. **Physical Hardware Topologies & Multi-Tier Networks** (NetworkX Knowledge Graph)
-2. **Contractual SLAs, MSAs & Sovereignty Standards** (ChromaDB Vector Store)
-3. **Master BOM Inventories, POs & Dock Manifests** (SQLite SSOT Database)
+**Aethelgard Infra-GraphRAG** is an autonomous, tri-modal Agentic AI system that unites:
+1. **Physical Hardware Topologies & Multi-Tier Supplier Networks** (NetworkX Knowledge Graph with 332+ nodes and dependency chains)
+2. **Contractual SLAs, Master Services Agreements & Sovereignty Standards** (ChromaDB Vector Index with Attribute-Based Access Control)
+3. **Master BOM Inventories, Purchase Orders & Dock Receipts** (SQLite Relational Single Source of Truth)
 
-The agent operates across **six adaptive GraphRAG architectural patterns** (Sarkar, 2026), with automated prompt injection guardrails, a multi-step reflection loop, and zero-hallucination footnote citations.
-
----
-
-## 2. Key Capabilities & Features
-
-- **Tri-Modal Context Synthesis**: Concurrently queries relational SQL, graph topology traversals, and semantic vector collections.
-- **Adaptive 6-Pattern Intent Router**: Automatically selects from 6 GraphRAG patterns:
-  - `P1`: Deterministic Text-to-Cypher (Single-source supplier audit)
-  - `P2`: Parallel Hybrid (Force Majeure + PO delay penalties)
-  - `P3`: Sequential Graph-First (Taiwan freight disruption cascade)
-  - `P4`: Sequential Table-First (Hardware cost and bandwidth comparison)
-  - `P5`: Adaptive Router / Vector-Primary (EU AI Act & BSI C5 attestations)
-  - `P6`: Agentic Multi-Step Loop (Crisis response & spare parts runway)
-- **Role-Based Security & ABAC Clearance**: Four persona viewpoints with strict access control:
-  - `CTO / Hardware Architecture`
-  - `Head of Procurement`
-  - `General Counsel / Compliance`
-  - `Lead Cloud SRE` *(Strictly blocked from sensitive legal clauses)*
-- **Data Discrepancy Auditing (Trap 2 Mitigation)**: Triangulates ERP purchase order quantities with loading dock delivery receipts (`dock_receipts`), explicitly surfacing backorders and delivery deficits.
-- **Deterministic Disruption Simulator**: 1-click scenario simulator (e.g., Taiwan embargo, vendor restructuring) that mutates the SSOT and re-projects the graph dynamically under CQRS.
+The system dynamically reasons over these three modalities to answer complex executive questions, detect hidden inventory discrepancies (e.g. ERP purchase order vs. loading dock receipt shortfalls), simulate geopolitical disruptions, and provide verifiable audit trails.
 
 ---
 
-## 3. Quick Start & Installation
+## 2. Strict Engineering Principles: No Fakes & No Silent Fallbacks
 
-### Prerequisites
-- Python 3.11+
-- Virtual environment tool (`venv` or `uv`)
+This application adheres to a strict engineering standard: **zero hardcoded canned benchmark answers and zero silent fallbacks**.
 
-### 1. Setup & Environment
-```bash
-# Navigate to the project root directory
-cd <project-directory>
+- **Genuinely Grounded Retrieval**:
+  - The SQL queries genuinely query the local `infrastructure.db` database using read-only PRAGMAs (`PRAGMA query_only = ON`).
+  - The Graph queries genuinely traverse the NetworkX graph topology (finding Taiwan-dependent components, cooling pump failure blast radii, single-source bottlenecks, and software stack chains).
+  - The Vector tool genuinely searches ChromaDB semantic collections filtered by role-based ABAC permissions.
+- **Transparent LLM Synthesis & Error Surfacing**:
+  - The natural-language executive answers are generated **exclusively by the live LLM provider** (OpenRouter) using the genuinely retrieved context.
+  - If no OpenRouter API key is provided, if the key is invalid, or if an upstream rate limit (HTTP 429) occurs, the system **never fakes an answer or silently returns pre-written text**.
+  - Instead, the agent transparently marks the response as incomplete (`is_complete = False`), surfaces the exact error message, provides instructions on how to input an API key, and renders the raw retrieved data rows and topology facts so the user can still inspect ground truth.
 
-# Install dependencies
-pip install -r requirements.txt
+---
 
-# Configure secrets (copy template)
-cp .env.example .env
-# Edit .env and insert OPENROUTER_API_KEY (optional: offline deterministic mode works automatically)
+## 3. System Architecture
+
+```mermaid
+flowchart TD
+    subgraph UI ["Streamlit Web Interface"]
+        APIKey["OpenRouter Key Input + Live Validator"]
+        Persona["Role Switcher (Legal / Procurement / CTO / SRE)"]
+        Console["Decision Console & Benchmark Carousel"]
+        Sim["Disruption Simulator"]
+        Ingest["Multi-Format Document Ingestion"]
+    end
+
+    subgraph Core ["Agent Orchestrator (Action-Inspection-Correction Loop)"]
+        Guard["Safety & Scope Guardrails"]
+        Router["Adaptive 6-Pattern Intent Router (Sarkar 2026)"]
+        Reflect["Multi-Step Reflection & Grounding Engine"]
+        Builder["Citation & Diagram Response Builder"]
+    end
+
+    subgraph Storage ["Tri-Modal Persistence Layer"]
+        SQL[("SQLite SSOT<br/>infrastructure.db<br/>(BOM, POs, Receipts)")]
+        Graph[("NetworkX Topology<br/>knowledge_graph.gpickle<br/>(332 Nodes, Multi-Tier Edges)")]
+        Chroma[("ChromaDB Vector Store<br/>(Contracts, Specifications,<br/>Table Summaries)")]
+    end
+
+    UI --> Core
+    Core --> Storage
+    SQL -.->|CQRS Sync| Graph
 ```
 
-### 2. Generate Synthetic Datasets
+### The Tri-Modal Modalities
+1. **Relational SSOT (SQLite)**: Provides exact numerical accuracy for financial values, purchase order line items, lead times, safety stock balances, and dock receipt delivery records.
+2. **Knowledge Graph (NetworkX)**: Models the structural topology:
+   - Data center physical hierarchy: Data Center Room $\to$ Server Row $\to$ Rack $\to$ Blade Server $\to$ Accelerator / PSU.
+   - Facility infrastructure: Cooling Loop $\to$ Heat Exchanger $\to$ Pump $\to$ Rack Cooling Manifold.
+   - Multi-tier supply chain: Tier-1 Server Vendor $\to$ Tier-2 Module Integrator $\to$ Tier-3 Semiconductor Foundry.
+3. **Semantic Vector Store (ChromaDB)**: Houses unstructured and semi-structured contracts, technical datasheets, EU AI Act compliance briefs, BSI C5 attestations, and tabular spreadsheet chunks.
+
+### The 6 GraphRAG Architectural Patterns (Sarkar, 2026)
+The agent router automatically classifies user intent into one of six distinct GraphRAG patterns:
+- **`P1: Deterministic Text-to-Cypher`**: Direct graph traversal for single-source supplier discovery and entity-relationship queries.
+- **`P2: Parallel Hybrid`**: Concurrent retrieval across vector contracts and relational SQL orders (e.g. evaluating Force Majeure clauses against delayed purchase orders and liquidated damages caps).
+- **`P3: Sequential Graph-First`**: Graph traversal identifies cascading dependencies (e.g. Taiwan geopolitical disruption), followed by SQL joins to aggregate the financial order value of affected components.
+- **`P4: Sequential Table-First`**: SQL query extracts hardware specifications and costs, followed by graph traversal to verify facility compatibility and thermal constraints.
+- **`P5: Adaptive Router / Vector-Primary`**: Direct semantic vector search against regulatory and compliance corpuses (e.g. BSI C5 audit checklists, EU AI Act conformity assessments).
+- **`P6: Agentic Multi-Step Loop`**: Iterative multi-hop reasoning with self-correction across all three modalities for complex disaster recovery and component runway planning.
+
+### Attribute-Based Access Control (ABAC)
+Documents and collections are partitioned across 4 persona clearance levels:
+- **`LEGAL`**: Full access to Master Services Agreements, Force Majeure clauses, penalty terms, and regulatory documents.
+- **`PROCUREMENT`**: Access to purchase orders, dock receipts, vendor scorecards, pricing sheets, and BOM catalogs.
+- **`CTO / ARCHITECTURE`**: Access to technical engineering manuals, cooling topologies, ROCm/CUDA compatibility matrices, and rack specifications.
+- **`SRE`**: Access to facility telemetry, cooling loop maps, and incident playbooks. **Strictly blocked** from confidential commercial pricing and supplier contracts.
+
+---
+
+## 4. How to Use the Application
+
+### 1. API Key Setup & Live Validation
+1. Launch the Streamlit application (`streamlit run app.py`).
+2. In the left sidebar under **OpenRouter API Key**, paste your OpenRouter key (`sk-or-...`).
+3. Click **Verify Key**.
+4. The system sends a live verification request to `https://openrouter.ai/api/v1/auth/key`:
+   - 🟢 **Connected**: Key is valid and active. Displays key label and enables full LLM synthesis.
+   - 🟡 **Key Required**: Key is missing; UI operates in transparent retrieval-only mode with real error surfacing.
+   - 🔴 **Invalid Key**: Key is rejected by OpenRouter; UI displays the exact HTTP status and error reason.
+*(Note: You can also specify `OPENROUTER_API_KEY=...` in your local `.env` file.)*
+
+### 2. Tab 1: Decision Console (AI Agent & Benchmarks)
+- **Persona Switcher**: Choose your operational role (`LEGAL`, `PROCUREMENT`, `CTO`, or `SRE`) to apply proper ABAC permissions.
+- **1-Click Benchmark Carousel**: Quick-test the system with real-world scenarios:
+  1. *Taiwan Freight Corridor Disruption (Blast Radius & Blocked PO Value)*
+  2. *Supermicro 10-Week Delay (Force Majeure vs. Liquidated Damages Cap)*
+  3. *Single Point of Failure (Exclusive Supplier Bottlenecks)*
+  4. *MI300X vs. H200 Architectural Comparison (Cost & Lead Times)*
+  5. *BSI C5 & EU AI Act Sovereignty Compliance Audit*
+  6. *Cooling Loop Pump Failure (Cascade to AI Racks)*
+  7. *Broadcom 800G Transceiver Price Surge (15% Inflation Impact)*
+  8. *ROCm & Kernel Driver Compatibility Verification*
+  9. *Disaster Recovery & Component Runway Assessment*
+  10. *Dock Receipt vs. ERP Discrepancy Detection (Trap 2)*
+- **Natural Language Chat**: Ask arbitrary free-form questions about data center components, contracts, or suppliers.
+- **Rich Footnote Citations**: Every generated response includes verifiable citations (`[1]`, `[2]`, ...).
+  - Click **🔍 Inspect Full Source Text & Metadata** on any citation card to view an expandable drawer showing the exact document passage, the live SQL query and table rows, or the traversed graph entity path.
+  - Pickle files (`.gpickle`) are never cited; citations identify the exact entity topology.
+- **Mermaid Diagrams**: Visual flowcharts and dependency cascades are automatically rendered directly below answers.
+- **Discrepancy Banner**: If an ERP quantity does not match dock receipt delivery manifests, a prominent warning alert highlights the shortfall and recommended corrective action.
+
+### 3. Tab 2: Disruption Simulator & Data Studio
+- **1-Click Disruption Injection**:
+  - *Simulate Taiwan Maritime Blockade*: Updates supplier delivery flags and recalculates component delivery risks.
+  - *Simulate Supermicro Vendor Insolvency*: Flags supplier chassis delays.
+  - *Simulate Hall-1 Cooling Failure*: Takes primary cooling pumps offline.
+- **Live Database Studio**:
+  - Browse live SQLite tables (`components`, `suppliers`, `purchase_orders`, `dock_receipts`).
+  - Run arbitrary read-only SQL queries directly in the browser.
+
+### 4. Tab 3: Topology & Analytics
+- **Interactive Graph Visualizer**: Explore the 332-node infrastructure graph in 2D/3D using interactive physics-based controls (zoom, pan, drag nodes).
+- **Network Metrics**: View node degree centrality, single-source bottlenecks, and cluster distribution.
+
+### 5. Tab 4: Multi-Format Document Ingestion & Lifecycle
+- **Supported File Types**:
+  - PDF documents (`.pdf`)
+  - Plain text & Markdown (`.txt`, `.md`)
+  - Spreadsheet datasets (`.csv`, `.xlsx`, `.xls`)
+- **Tabular Data Processing**:
+  - When uploading CSV or Excel files, the system parses each sheet, extracts column headers, preserves tabular markdown structures, and generates chunk embeddings mapped to the `table_summaries` vector collection.
+  - Interactive table preview allows inspecting spreadsheet rows in the browser prior to indexing.
+- **Document Lifecycle & Deduplication**:
+  - Generates SHA-256 content hashes.
+  - Re-uploading a revised document automatically marks previous revisions as `deprecated` while preserving version history.
+
+---
+
+## 5. Installation & Setup
+
+### Prerequisites
+- Python 3.12+ (Recommended: create a dedicated virtual environment)
+- Git
+
+### 1. Clone & Set Up Virtual Environment
 ```bash
-# Generate BOM, Purchase Orders, and Dock Receipts (SQLite + Excel)
+# Clone the repository
+git clone <repository-url>
+cd <repository-directory>
+
+# Create Python 3.12 virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# Linux / macOS:
+source .venv/bin/activate
+
+# Upgrade pip and install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+Edit `.env` and insert your private secrets:
+```ini
+OPENROUTER_API_KEY=sk-or-v1-your-key-here
+```
+*(Operational parameters such as model names, temperature, timeouts, and chunking parameters are strictly managed in `config.json`.)*
+
+### 3. Generate Datasets & Knowledge Bases
+Execute the data generation and indexing pipeline:
+```bash
+# 1. Generate Master BOM, Purchase Orders, and Dock Receipts (SQLite + CSV)
 python scripts/generate_bom.py
 
-# Compile synthetic PDFs and engineering specifications
+# 2. Compile Synthetic Contracts, SLAs, and Compliance PDFs
 python scripts/generate_documents.py
 
-# Seed the NetworkX Knowledge Graph from SQLite SSOT
+# 3. Compile the NetworkX Knowledge Graph from SQLite SSOT
 python scripts/seed_graph.py
 
-# Index documents into ChromaDB collections
+# 4. Ingest and Embed Documents into ChromaDB Vector Collections
 python ingestion/embedder.py
 
-# Verify 100% referential data integrity
+# 5. Validate 100% Referential Integrity across SQL, Graph, and Vector Stores
 python scripts/validate_data.py
 ```
 
-### 3. Launch Streamlit Showcase UI
+### 4. Launch the Web Application
 ```bash
 streamlit run app.py
 ```
-Open your browser at `http://localhost:8501`.
+Open your browser to `http://localhost:8501`.
 
 ---
 
-## 4. Acceptance Benchmarks & Testing
-
-Run the full automated test suite with coverage:
-```bash
-python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=utils --cov-report=term-missing
-```
-
-Run the 10 Benchmark RAG evaluation suite:
-```bash
-python scripts/evaluate_rag.py
-```
-
----
-
-## 5. Repository Structure
-
-```
-├── app.py                         # Clean Streamlit shell entry point (< 150 lines)
-├── config.json                    # All operational settings & model parameters
-├── .env.example                   # Secret template (clean code architecture)
-├── requirements.txt               # Pinned dependencies
-├── ui/                            # Streamlit Presentation Layer (4 Tabs)
-│   ├── tab_decision_console.py    # Tab 1: AI Chat & 1-Click Benchmark Carousel
-│   ├── tab_simulation.py          # Tab 2: Disruption Simulator & Data Studio
-│   ├── tab_analytics.py           # Tab 3: PyVis Graph & Metrics Dashboard
-│   └── tab_ingestion.py           # Tab 4: File Ingestion & Document Lifecycle
-├── agent/                         # Agent Reasoning Core
-│   ├── orchestrator.py            # Reflection loop (Action-Inspect-Correct)
-│   ├── intent_router.py           # 6-pattern classification router
-│   ├── guardrails.py              # Pre/post retrieval safety & grounding checks
-│   └── response_builder.py        # Confidence calculation & citation assembly
-├── retrieval/                     # Tri-Modal Retrieval Tools
-│   ├── vector_search.py           # ChromaDB search with ABAC filters
-│   ├── graph_query.py             # NetworkX topology traversals
-│   └── sql_query.py               # Read-only SQLite query tool
-├── ingestion/                     # Ingestion & Lifecycle Pipeline
-│   ├── parser.py                  # PyMuPDF text & metadata extraction
-│   ├── chunker.py                 # Format-aware section chunking
-│   ├── embedder.py                # ChromaDB vector indexing
-│   └── lifecycle.py               # Document hashing & version deprecation
-├── ports/                         # Hexagonal Port Interfaces & Adapters
-│   ├── base.py                    # VectorStorePort, GraphStorePort, LLMProviderPort
-│   ├── vector_store/              # ChromaDBAdapter
-│   ├── graph_store/               # NetworkXAdapter
-│   ├── llm_provider/              # OpenRouterAdapter
-│   └── registry.py                # Dependency injection container
-├── scripts/                       # Data Generation & Benchmark Runners
-│   ├── generate_bom.py            # SQLite & Excel BOM generator
-│   ├── generate_documents.py      # Synthetic PDF compiler
-│   ├── seed_graph.py              # Graph compiler from SQLite
-│   ├── validate_data.py           # Referential integrity validator
-│   └── evaluate_rag.py            # 10 Benchmark evaluation runner
-├── templates/                     # Standalone HTML templates for PDFs
-├── docs/                          # Architectural & Design Documentation
-│   ├── architecture.md            # Tri-Modal CQRS system architecture
-│   ├── agent_roles.md             # Personas, ABAC clearance & tools
-│   └── limitations.md             # Prototype constraints & scaling roadmap
-└── tests/                         # Unit and integration test suite (pytest)
-```
-
----
-
-## 6. License & Sovereignty Compliance
-
-Engineered in full compliance with:
-- **[Regulation (EU) 2024/1689 (EU AI Act)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)** — European Parliament and Council regulation establishing harmonised rules on artificial intelligence.
-- **[German BSI Cloud Computing Compliance Criteria Catalogue (C5:2024)](https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/Zertifizierung-nach-IT-Grundschutz/C5/c5_node.html)** — German Federal Office for Information Security criteria for secure and sovereign cloud computing.
-- **[Directive (EU) 2022/2555 (NIS2 Directive)](https://eur-lex.europa.eu/eli/dir/2022/2555/oj)** — Measures for a high common level of cybersecurity and critical infrastructure supply chain security across the European Union.
-
----
-
-## 7. Docker Deployment
+## 6. Docker Deployment
 
 A production-ready Docker setup is included:
 
 ```bash
-# Build & start (regenerates synthetic data inside the container)
+# Build & start (generates synthetic data inside the container)
 docker compose -f docker-compose.deploy.yml up -d --build
 
 # App is served at http://localhost:8510
 # Set OPENROUTER_API_KEY to enable live LLM reasoning
-# (without a key, the offline deterministic fallback mode is used)
 ```
 
-- **Dockerfile** — multi-stage Python 3.11-slim image; generates BOM/documents/graph/Chroma
-  index at build time so the container is self-contained (no API key required for the demo).
-- **Ports** — binds `127.0.0.1:8510` → container `8501`; reverse-proxied by nginx at
-  `https://supply-chain.taskmind-ai.com`.
+- **Dockerfile** — Multi-stage Python 3.11-slim image; generates BOM/documents/graph/Chroma index at build time so the container is self-contained.
+- **Ports** — Binds `127.0.0.1:8510` → container `8501`.
+
+---
+
+## 7. Testing & Verification
+
+The test suite contains 28 unit and integration tests covering the entire end-to-end pipeline:
+- Ingestion parsers (PDF, TXT, CSV, Excel)
+- Section chunkers & table pagination
+- Pre-retrieval safety & prompt injection guardrails
+- 6-pattern intent classification router
+- Tri-modal retrieval tools (SQL, NetworkX Graph, ChromaDB ABAC)
+- Reflection loop and citation generation
+- Transparent error handling when external LLM providers fail
+
+Run all tests:
+```bash
+python -m pytest tests/ -v
+```
+
+Run test suite with code coverage:
+```bash
+python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=utils --cov-report=term-missing
+```
+
+---
+
+## 8. Repository Structure
+
+```
+├── app.py                         # Clean Streamlit shell entry point with API key management
+├── config.json                    # Operational settings, model configs, and path resolutions
+├── .env.example                   # Template for private credentials
+├── Dockerfile                     # Multi-stage Docker build configuration
+├── docker-compose.deploy.yml      # Docker compose production deployment definition
+├── requirements.txt               # Pinned dependencies
+├── ui/                            # Streamlit Presentation Layer
+│   ├── tab_decision_console.py    # Tab 1: AI Chat, 1-Click Carousel & Citation Previews
+│   ├── tab_simulation.py          # Tab 2: Disruption Simulator & SQL Studio
+│   ├── tab_analytics.py           # Tab 3: PyVis Interactive Graph & Analytics
+│   └── tab_ingestion.py           # Tab 4: PDF, TXT, CSV & Excel Ingestion & Preview
+├── agent/                         # Core Agentic Intelligence
+│   ├── orchestrator.py            # Reflection loop (Action-Inspect-Correct)
+│   ├── intent_router.py           # 6-Pattern classifier (Sarkar 2026)
+│   ├── guardrails.py              # Pre/post retrieval safety & injection filters
+│   └── response_builder.py        # Confidence scoring & citation models
+├── retrieval/                     # Tri-Modal Retrieval Engines
+│   ├── sql_query.py               # Read-only SQLite query tool (PRAGMA query_only=ON)
+│   ├── graph_query.py             # NetworkX topology traversals & dependency analysis
+│   └── vector_search.py           # ChromaDB semantic search with ABAC filters
+├── ingestion/                     # Ingestion & Lifecycle Pipeline
+│   ├── parser.py                  # PyMuPDF, Pandas & OpenPyXL document parsers
+│   ├── chunker.py                 # Structured chunker with table pagination
+│   ├── embedder.py                # ChromaDB vector indexer
+│   └── lifecycle.py               # SHA-256 deduplication & deprecation manager
+├── ports/                         # Hexagonal Port Interfaces & Concrete Adapters
+│   ├── base.py                    # VectorStorePort, GraphStorePort, LLMProviderPort
+│   ├── vector_store/              # ChromaDBAdapter
+│   ├── graph_store/               # NetworkXAdapter
+│   ├── llm_provider/              # OpenRouterAdapter with live key verification
+│   └── registry.py                # Dependency injection container
+├── scripts/                       # Dataset Generation & Evaluation
+│   ├── generate_bom.py            # SQLite database & CSV generator
+│   ├── generate_documents.py      # Synthetic contracts & PDF generator
+│   ├── seed_graph.py              # SQLite-to-NetworkX graph builder
+│   ├── validate_data.py           # Referential integrity auditor
+│   └── evaluate_rag.py            # 10 Benchmark RAG evaluation runner
+├── templates/                     # Standalone HTML templates for PDF generation
+├── docs/                          # Architectural & Design Specifications
+│   ├── architecture.md            # Detailed Tri-Modal CQRS system architecture
+│   ├── agent_roles.md             # Persona permissions & ABAC security matrix
+│   └── limitations.md             # Prototype constraints & production roadmap
+└── tests/                         # Automated Test Suite (pytest)
+    ├── unit/                      # Unit tests for chunker, guardrails, router
+    └── integration/               # Integration tests for tools, ingestion, e2e agent
+```
+
+---
+
+## 9. Standards & Regulatory Compliance
+
+This system is engineered in accordance with European and sovereign cloud security frameworks:
+- **[Regulation (EU) 2024/1689 (EU AI Act)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)** — High-risk transparency, human oversight, and data governance.
+- **[German BSI Cloud Computing Compliance Criteria Catalogue (C5:2024)](https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/Zertifizierung-nach-IT-Grundschutz/C5/c5_node.html)** — Security, auditing, and sovereignty controls for cloud infrastructure.
+- **[Directive (EU) 2022/2555 (NIS2 Directive)](https://eur-lex.europa.eu/eli/dir/2022/2555/oj)** — Measures for a high common level of cybersecurity across critical supply chains within the European Union.

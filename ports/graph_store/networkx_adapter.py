@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -25,6 +26,18 @@ class NetworkXAdapter(GraphStorePort):
         self.load_graph()
 
     def load_graph(self):
+        """Load knowledge graph preferring secure JSON format over binary pickle."""
+        json_file = self.graph_file if self.graph_file.suffix == ".json" else self.graph_file.with_suffix(".json")
+        if json_file.exists():
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and "nodes" in data and ("links" in data or "edges" in data):
+                    self.graph = nx.node_link_graph(data, multigraph=True, directed=True)
+                    return
+            except Exception:
+                pass
+
         if self.graph_file.exists():
             with open(self.graph_file, "rb") as f:
                 self.graph = pickle.load(f)

@@ -29,6 +29,10 @@ RUN python scripts/generate_bom.py \
     && python scripts/seed_graph.py \
     && python ingestion/embedder.py
 
+# Create non-root user and assign ownership
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8501
 
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \

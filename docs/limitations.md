@@ -7,8 +7,8 @@
 - **Production Path**: Transition to clustered distributed vector databases such as **Qdrant** or **Milvus** with dedicated shard management and raft consensus for high-throughput multi-tenant deployments.
 
 ### 1.2 Knowledge Graph Scaling (NetworkX to Neo4j)
-- **Current State**: NetworkX operates in-memory (`knowledge_graph.gpickle`). While ideal for 500 nodes and instant graph traversal in demonstrations, it does not support ACID transactions across multiple writers.
-- **Production Path**: Migrate to clustered **Neo4j** or **Memgraph** utilizing the pre-built `ports/graph_store/neo4j_adapter.py` interface with Cypher query optimization.
+- **Current State**: NetworkX operates in-memory (`knowledge_graph.json`). While ideal for 500 nodes and instant graph traversal in demonstrations, it does not support ACID transactions across multiple concurrent writers.
+- **Production Path**: Migrate to clustered **Neo4j** or **Memgraph** by implementing a `Neo4jAdapter` implementing the `GraphStorePort` interface with Cypher query optimization.
 
 ### 1.3 Synthetic Grounding Data vs. Live CMDB
 - **Current State**: Grounded in 155 synthetic OCP-compliant SKUs and 14 synthesized legal/regulatory PDFs.

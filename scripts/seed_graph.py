@@ -259,21 +259,17 @@ def build_knowledge_graph() -> nx.MultiDiGraph:
 
     conn.close()
 
-    # Save Graph
+    # Save Graph as secure node-link JSON (zero pickle vulnerabilities)
+    node_link_data = nx.node_link_data(G)
+    with open(graph_json_path, "w", encoding="utf-8") as f:
+        json.dump(node_link_data, f, indent=2)
+
+    # Optional legacy pickle compatibility file
     with open(graph_path, "wb") as f:
         pickle.dump(G, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # Save JSON summary for inspection
-    json_data = {
-        "nodes_count": G.number_of_nodes(),
-        "edges_count": G.number_of_edges(),
-        "node_labels": dict(nx.get_node_attributes(G, "label")),
-    }
-    with open(graph_json_path, "w", encoding="utf-8") as f:
-        json.dump(json_data, f, indent=2)
-
     print(f"Knowledge Graph successfully built: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges.")
-    print(f"Graph serialized to: {graph_path}")
+    print(f"Graph safely serialized to JSON: {graph_json_path}")
     return G
 
 

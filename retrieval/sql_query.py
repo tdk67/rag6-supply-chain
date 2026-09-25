@@ -48,27 +48,44 @@ class SQLQueryTool:
         self.llm = AdapterRegistry.get_llm_provider()
 
     def _sanitize_query(self, sql: str) -> str:
-        """Strip markdown fences, leading/trailing whitespace, and dangerous commands."""
+        """Strip markdown fences, reject multiple statements, mutations, and non-SELECT roots."""
         clean = sql.strip()
         if "```" in clean:
             match = re.search(r"```(?:sql)?(.*?)```", clean, re.DOTALL | re.IGNORECASE)
             if match:
                 clean = match.group(1).strip()
 
+        # Strip trailing semicolon if single statement
+        clean = re.sub(r";\s*$", "", clean).strip()
+
+        # Reject multi-statement queries (e.g. SELECT 1; DROP TABLE ...)
+        if ";" in clean:
+            raise ValueError("Forbidden multi-statement SQL query detected: queries with semicolons are not permitted.")
+
         # Reject mutation or administrative keywords
-        forbidden = [r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bDROP\b", r"\bALTER\b", r"\bCREATE\b", r"\bATTACH\b", r"\bDETACH\b"]
+        forbidden = [
+            r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bDROP\b",
+            r"\bALTER\b", r"\bCREATE\b", r"\bATTACH\b", r"\bDETACH\b",
+            r"\bPRAGMA\b", r"\bVACUUM\b", r"\bREINDEX\b", r"\bEXEC\b"
+        ]
         for pat in forbidden:
             if re.search(pat, clean, re.IGNORECASE):
                 raise ValueError(f"Forbidden SQL mutation command detected: {pat}")
 
+        # Allow-list query starting keyword
+        if not re.match(r"^(SELECT|WITH)\b", clean, re.IGNORECASE):
+            raise ValueError("Forbidden SQL query: Only read-only SELECT or WITH statements are allowed.")
+
         return clean
 
     def execute_raw(self, sql: str) -> SQLQueryResult:
-        """Execute a sanitized read-only SQL query."""
+        """Execute a sanitized read-only SQL query in URI read-only mode."""
         start_time = time.perf_counter()
         try:
             sanitized = self._sanitize_query(sql)
-            conn = sqlite3.connect(self.db_path, timeout=self.timeout_sec)
+            # Open database connection in read-only URI mode
+            uri_path = f"file:{self.db_path.resolve().as_posix()}?mode=ro"
+            conn = sqlite3.connect(uri_path, uri=True, timeout=self.timeout_sec)
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
             cur.execute("PRAGMA query_only = ON")

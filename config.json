@@ -20,8 +20,26 @@
   },
   "embedding": {
     "provider": "local",
-    "model": "BAAI/bge-small-en-v1.5",
+    "model": "all-MiniLM-L6-v2",
     "dimension": 384
+  },
+  "chunking": {
+    "contracts": {
+      "chunk_size": 800,
+      "chunk_overlap": 150
+    },
+    "specifications": {
+      "chunk_size": 600,
+      "chunk_overlap": 100
+    },
+    "tables": {
+      "chunk_size": 500,
+      "chunk_overlap": 100
+    },
+    "general": {
+      "chunk_size": 500,
+      "chunk_overlap": 100
+    }
   },
   "retrieval": {
     "top_k": 5,
@@ -48,7 +66,7 @@
     "documents_dir": "data/documents",
     "chroma_dir": "data/chroma_db",
     "sqlite_db": "data/generated/infrastructure.db",
-    "graph_file": "data/generated/knowledge_graph.gpickle",
+    "graph_file": "data/generated/knowledge_graph.json",
     "bom_excel": "data/generated/bom_inventory.xlsx",
     "templates_dir": "templates",
     "prompts_dir": "prompts"

@@ -99,24 +99,69 @@ class SafetyGuardrails:
         )
 
     def check_post_retrieval_grounding(
-        self, draft_answer: str, context_chunks: List[str], sql_results: Optional[List[Dict]] = None
+        self, draft_answer: str, context_chunks: List[str], sql_results: Optional[List[Dict[str, Any]]] = None
     ) -> GroundingCheckResult:
-        """Verify that claims in draft answer are backed by retrieved context."""
-        # Check numerical claims
+        """Verify that claims in draft answer are backed by retrieved context and mathematically faithful to SQL rows."""
+        discrepancies: List[str] = []
+        unsupported_claims: List[str] = []
+        combined_context = " ".join(context_chunks).lower()
+
+        # 1. Cross-check cited purchase orders & exact numerical values against SQL records or context chunks
         math_verified = True
-        discrepancies = []
+        po_matches = set(re.findall(r"\b(PO-\d+)\b", draft_answer, re.IGNORECASE))
+        for po_num in po_matches:
+            verified_in_sql = False
+            if sql_results:
+                matching_rows = [r for r in sql_results if str(r.get("po_number", "")).upper() == po_num.upper()]
+                if matching_rows:
+                    verified_in_sql = True
+                    expected_val = matching_rows[0].get("total_val_eur")
+                    if expected_val is not None:
+                        val_float = float(expected_val)
+                        val_str1 = f"{val_float:,.2f}"
+                        val_str2 = f"{int(val_float):,}"
+                        val_str3 = str(int(val_float))
+                        if not any(v in draft_answer for v in (val_str1, val_str2, val_str3)):
+                            discrepancies.append(
+                                f"Financial value mismatch for {po_num}: Expected €{val_float:,.2f} based on SQL SSOT record."
+                            )
+                            math_verified = False
 
-        # If PO-8821 mentioned, verify 1,184,000 EUR
-        if "PO-8821" in draft_answer:
-            if "1,184,000" not in draft_answer and "1184000" not in draft_answer:
-                discrepancies.append("Value mismatch: PO-8821 value should be €1,184,000.00")
-                math_verified = False
+            # Cross-verify against retrieved context chunks if not verified via SQL
+            if not verified_in_sql and context_chunks:
+                relevant_chunks = [c for c in context_chunks if po_num.lower() in c.lower()]
+                for chunk in relevant_chunks:
+                    chunk_currencies = re.findall(r"[€$£]\s*([0-9,]+(?:\.[0-9]{2})?)", chunk)
+                    draft_currencies = re.findall(r"[€$£]\s*([0-9,]+(?:\.[0-9]{2})?)", draft_answer)
+                    if chunk_currencies and draft_currencies:
+                        norm_chunk = {re.sub(r"\.00$", "", c.replace(",", "")) for c in chunk_currencies}
+                        norm_draft = {re.sub(r"\.00$", "", d.replace(",", "")) for d in draft_currencies}
+                        if not norm_draft.intersection(norm_chunk):
+                            discrepancies.append(
+                                f"Financial value mismatch for {po_num}: Draft claims {draft_currencies} but context records {chunk_currencies}."
+                            )
+                            math_verified = False
 
-        score = 95 if math_verified else 70
+        # 2. Cross-check component SKUs mentioned in draft against context & SQL
+        sku_matches = re.findall(r"\b(SKU-[A-Z0-9-]+)\b", draft_answer, re.IGNORECASE)
+        for sku in set(sku_matches):
+            sku_upper = sku.upper()
+            found_in_chunks = sku_upper.lower() in combined_context
+            found_in_sql = False
+            if sql_results:
+                found_in_sql = any(str(r.get("sku", "")).upper() == sku_upper for r in sql_results)
+            if not found_in_chunks and not found_in_sql:
+                unsupported_claims.append(f"Unverified SKU '{sku_upper}' not found in retrieved grounding context.")
+
+        total_checks = max(1, len(set(re.findall(r"\b(PO-\d+|SKU-[A-Z0-9-]+)\b", draft_answer, re.IGNORECASE))))
+        failures = len(discrepancies) + len(unsupported_claims)
+        confidence_score = max(30, int(100 * (1 - (failures / total_checks)))) if total_checks else 90
+
+        is_grounded = len(discrepancies) == 0 and len(unsupported_claims) == 0
         return GroundingCheckResult(
-            is_grounded=math_verified,
-            confidence_score=score,
-            unsupported_claims=[],
+            is_grounded=is_grounded,
+            confidence_score=confidence_score,
+            unsupported_claims=unsupported_claims,
             math_verified=math_verified,
             discrepancies=discrepancies,
         )

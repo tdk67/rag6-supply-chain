@@ -137,10 +137,11 @@ def main():
 
         st.markdown("---")
         st.markdown("### ⚙️ Engine Health & Models")
+        g_stats = AdapterRegistry.get_graph_store().get_stats()
         st.info(
             f"**LLM Model:** `{cfg['llm']['model']}`\n\n"
             f"**Vector Store:** `ChromaDB (In-Process)`\n\n"
-            f"**Knowledge Graph:** `NetworkX (332 Nodes)`\n\n"
+            f"**Knowledge Graph:** `NetworkX ({g_stats['total_nodes']} Nodes, {g_stats['total_edges']} Edges)`\n\n"
             f"**SQL SSOT:** `SQLite (infrastructure.db)`"
         )
         st.caption("European Cloud Routing: Enabled (EU Data Residency)")

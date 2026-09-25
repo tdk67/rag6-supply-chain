@@ -6,6 +6,7 @@ and real-time ChromaDB vector indexing.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -22,18 +23,53 @@ from ingestion.lifecycle import DocumentLifecycleManager
 from utils.config import resolve_path, load_config
 
 
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".csv", ".xlsx", ".xls"}
+MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
+
+
 def handle_file_upload(uploaded_file, version: str = "1.0") -> dict:
-    """Process uploaded file, save to data/documents/, register in SQLite, and index in ChromaDB."""
+    """Process uploaded file safely, save to data/documents/, register in SQLite, and index in ChromaDB."""
+    # 1. Sanitize filename (strictly strip directory paths)
+    raw_name = getattr(uploaded_file, "name", "")
+    safe_name = Path(raw_name).name
+    if not safe_name or ".." in raw_name or "/" in raw_name or "\\" in raw_name:
+        return {"status": "ERROR", "message": "Invalid filename: path traversal characters detected."}
+
+    # 2. Extension allowlist check
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        return {
+            "status": "ERROR",
+            "message": f"Unsupported file type '{suffix}'. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        }
+
+    # 3. File size cap
+    file_bytes = uploaded_file.getbuffer()
+    if len(file_bytes) > MAX_FILE_SIZE_BYTES:
+        return {
+            "status": "ERROR",
+            "message": f"File size ({len(file_bytes) / 1024 / 1024:.1f} MB) exceeds maximum allowed limit of 25 MB.",
+        }
+
+    # 4. Version string validation
+    v_clean = version.strip()
+    if not re.match(r"^v?\d+(\.\d+)*(-[a-zA-Z0-9.]+)?$", v_clean):
+        v_clean = "1.0"
+
     cfg = load_config()
     docs_dir = resolve_path(cfg["paths"]["documents_dir"])
     docs_dir.mkdir(parents=True, exist_ok=True)
 
-    dest_path = docs_dir / uploaded_file.name
+    dest_path = (docs_dir / safe_name).resolve()
+    # Confirm dest_path is strictly within docs_dir
+    if not str(dest_path).startswith(str(docs_dir.resolve())):
+        return {"status": "ERROR", "message": "Security error: resolved path outside documents directory."}
+
     with open(dest_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+        f.write(file_bytes)
 
     lm = DocumentLifecycleManager()
-    reg_res = lm.register_document(dest_path, version=version)
+    reg_res = lm.register_document(dest_path, version=v_clean)
 
     embedder = DocumentEmbedder()
     chunks_count = embedder.index_document(dest_path)
@@ -41,8 +77,8 @@ def handle_file_upload(uploaded_file, version: str = "1.0") -> dict:
     return {
         "status": "SUCCESS",
         "doc_id": reg_res.get("doc_id"),
-        "filename": uploaded_file.name,
-        "version": version,
+        "filename": safe_name,
+        "version": v_clean,
         "chunks_indexed": chunks_count,
     }
 
@@ -86,7 +122,10 @@ def render_tab_ingestion():
                 with st.spinner(f"Ingesting {uploaded.name}..."):
                     try:
                         res = handle_file_upload(uploaded, version=version_input)
-                        st.success(f"Successfully indexed '{res['filename']}' ({res['chunks_indexed']} chunks) into ChromaDB!")
+                        if res.get("status") == "ERROR":
+                            st.error(f"Ingestion rejected: {res.get('message')}")
+                        else:
+                            st.success(f"Successfully indexed '{res['filename']}' ({res['chunks_indexed']} chunks) into ChromaDB!")
                     except Exception as e:
                         st.error(f"Ingestion failed: {e}")
 
