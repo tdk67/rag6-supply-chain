@@ -25,7 +25,7 @@ Aethelgard Infra-GraphRAG enforces Attribute-Based Access Control (ABAC) to ensu
 - **ABAC Filter**: Automatic collection filtering based on active user persona.
 
 ### Tool 2: Graph Query Tool (`retrieval/graph_query.py`)
-- **Backing Store**: NetworkX Knowledge Graph (`knowledge_graph.gpickle`).
+- **Backing Store**: NetworkX Knowledge Graph (`knowledge_graph.json`, node-link format).
 - **Core Traversals**:
   - `find_single_source_components()`: Identifies components with in-degree / out-degree supplier cardinality = 1.
   - `find_taiwan_dependent_components()`: Traces multi-tier wafer and packaging foundries in Taiwan.

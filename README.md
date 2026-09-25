@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Architecture: Tri-Modal GraphRAG](https://img.shields.io/badge/Architecture-Tri--Modal%20GraphRAG-purple.svg)](#system-architecture)
 [![Tests: 28 Passed](https://img.shields.io/badge/Tests-28%20Passed%20(100%25)-brightgreen.svg)](#testing--verification)
-[![Strict Transparency](https://img.shields.io/badge/Engineering-Zero%20Silent%20Fallbacks-orange.svg)](#strict-engineering-principles-no-fakes--no-silent-fallbacks)
+[![Strict Transparency](https://img.shields.io/badge/Engineering-Honest%20Error%20Surfacing-orange.svg)](#strict-engineering-principles-no-fakes-honest-errors)
 
 ---
 
@@ -22,9 +22,9 @@ The system dynamically reasons over these three modalities to answer complex exe
 
 ---
 
-## 2. Strict Engineering Principles: No Fakes & No Silent Fallbacks
+## 2. Strict Engineering Principles: No Fakes, Honest Errors
 
-This application adheres to a strict engineering standard: **zero hardcoded canned benchmark answers and zero silent fallbacks**.
+This application adheres to a strict engineering standard: **zero hardcoded canned benchmark answers, and answer synthesis that never fakes success**.
 
 - **Genuinely Grounded Retrieval**:
   - The SQL queries genuinely query the local `infrastructure.db` database using read-only PRAGMAs (`PRAGMA query_only = ON`).
@@ -34,6 +34,8 @@ This application adheres to a strict engineering standard: **zero hardcoded cann
   - The natural-language executive answers are generated **exclusively by the live LLM provider** (OpenRouter) using the genuinely retrieved context.
   - If no OpenRouter API key is provided, if the key is invalid, or if an upstream rate limit (HTTP 429) occurs, the system **never fakes an answer or silently returns pre-written text**.
   - Instead, the agent transparently marks the response as incomplete (`is_complete = False`), surfaces the exact error message, provides instructions on how to input an API key, and renders the raw retrieved data rows and topology facts so the user can still inspect ground truth.
+
+> **Scope of this guarantee (honesty note):** the *synthesis* path never fabricates. A few retrieval-level degraded fallbacks still exist (e.g. a keyword-overlap path in the ChromaDB adapter when the HNSW index is uncommitted, and a generic sample query in the SQL tool when Text-to-SQL fails). These are tracked for removal in [`docs/limitations.md`](docs/limitations.md).
 
 ---
 
@@ -58,7 +60,7 @@ flowchart TD
 
     subgraph Storage ["Tri-Modal Persistence Layer"]
         SQL[("SQLite SSOT<br/>infrastructure.db<br/>(BOM, POs, Receipts)")]
-        Graph[("NetworkX Topology<br/>knowledge_graph.gpickle<br/>(332 Nodes, Multi-Tier Edges)")]
+        Graph[("NetworkX Topology<br/>knowledge_graph.json<br/>(332 Nodes, Multi-Tier Edges)")]
         Chroma[("ChromaDB Vector Store<br/>(Contracts, Specifications,<br/>Table Summaries)")]
     end
 
@@ -105,6 +107,8 @@ Documents and collections are partitioned across 4 persona clearance levels:
    - 🔴 **Invalid Key**: Key is rejected by OpenRouter; UI displays the exact HTTP status and error reason.
 *(Note: You can also specify `OPENROUTER_API_KEY=...` in your local `.env` file.)*
 
+> ⚠️ **Multi-user deployments:** clicking **Apply Key** sets the LLM provider **process-wide** (all browser sessions share it), and a key entered in the sidebar is visible to that session only. For public/multi-tenant deployments, configure the key exclusively via `.env` and put authentication in front of the app; treat the sidebar input as a single-user convenience.
+
 ### 2. Tab 1: Decision Console (AI Agent & Benchmarks)
 - **Persona Switcher**: Choose your operational role (`LEGAL`, `PROCUREMENT`, `CTO`, or `SRE`) to apply proper ABAC permissions.
 - **1-Click Benchmark Carousel**: Quick-test the system with real-world scenarios:
@@ -121,18 +125,18 @@ Documents and collections are partitioned across 4 persona clearance levels:
 - **Natural Language Chat**: Ask arbitrary free-form questions about data center components, contracts, or suppliers.
 - **Rich Footnote Citations**: Every generated response includes verifiable citations (`[1]`, `[2]`, ...).
   - Click **🔍 Inspect Full Source Text & Metadata** on any citation card to view an expandable drawer showing the exact document passage, the live SQL query and table rows, or the traversed graph entity path.
-  - Pickle files (`.gpickle`) are never cited; citations identify the exact entity topology.
+  - Graph citations identify the exact traversed entity topology (node/edge paths) — never an opaque serialized graph file.
 - **Mermaid Diagrams**: Visual flowcharts and dependency cascades are automatically rendered directly below answers.
 - **Discrepancy Banner**: If an ERP quantity does not match dock receipt delivery manifests, a prominent warning alert highlights the shortfall and recommended corrective action.
 
 ### 3. Tab 2: Disruption Simulator & Data Studio
-- **1-Click Disruption Injection**:
-  - *Simulate Taiwan Maritime Blockade*: Updates supplier delivery flags and recalculates component delivery risks.
-  - *Simulate Supermicro Vendor Insolvency*: Flags supplier chassis delays.
-  - *Simulate Hall-1 Cooling Failure*: Takes primary cooling pumps offline.
-- **Live Database Studio**:
-  - Browse live SQLite tables (`components`, `suppliers`, `purchase_orders`, `dock_receipts`).
-  - Run arbitrary read-only SQL queries directly in the browser.
+- **1-Click Disruption Injection** (deterministic SSOT mutations + CQRS graph re-projection):
+  - *Baseline Normal*: Resets supplier statuses and delayed purchase orders to normal operating parameters.
+  - *Scenario A: Taiwan Freight Embargo*: Adds +16 weeks lead time to all Taiwan-dependent components.
+  - *Scenario B: Submer Manifold Insolvency*: Marks the Submer supplier `IN_RESTRUCTURING` and freezes its purchase orders (`DELAYED`).
+- **Live SSOT State Preview** (read-only):
+  - Browse the current `components`, `purchase_orders`, and flagged `dock_receipts` discrepancy records.
+- **Master Data Reset**: Regenerate the full synthetic BOM and re-seed the knowledge graph.
 
 ### 4. Tab 3: Topology & Analytics
 - **Interactive Graph Visualizer**: Explore the 332-node infrastructure graph in 2D/3D using interactive physics-based controls (zoom, pan, drag nodes).
@@ -155,8 +159,10 @@ Documents and collections are partitioned across 4 persona clearance levels:
 ## 5. Installation & Setup
 
 ### Prerequisites
-- Python 3.12+ (Recommended: create a dedicated virtual environment)
+- Python 3.11+ (the Docker image uses 3.11-slim; a dedicated virtual environment is recommended)
 - Git
+
+> **Upgrading an existing checkout?** Generated data artifacts under `data/generated/` are *not* tracked in git, and their format has changed (the knowledge graph is now node-link JSON). After `git pull`, always re-run step 3 below — stale artifacts will fail to load.
 
 ### 1. Clone & Set Up Virtual Environment
 ```bash
@@ -218,7 +224,7 @@ Open your browser to `http://localhost:8501`.
 
 ## 6. Docker Deployment
 
-A production-ready Docker setup is included:
+A self-contained Docker setup (demo/evaluation grade) is included:
 
 ```bash
 # Build & start (generates synthetic data inside the container)
@@ -228,8 +234,9 @@ docker compose -f docker-compose.deploy.yml up -d --build
 # Set OPENROUTER_API_KEY to enable live LLM reasoning
 ```
 
-- **Dockerfile** — Multi-stage Python 3.11-slim image; generates BOM/documents/graph/Chroma index at build time so the container is self-contained.
-- **Ports** — Binds `127.0.0.1:8510` → container `8501`.
+- **Dockerfile** — Python 3.11-slim image; generates BOM/documents/graph/Chroma index at build time so the container is self-contained; runs as a **non-root user** with a built-in `HEALTHCHECK` against Streamlit's `/_stcore/health`.
+- **Ports** — Binds `127.0.0.1:8510` → container `8501` (loopback only; put a reverse proxy with authentication in front for any public exposure).
+- **API key** — Pass `OPENROUTER_API_KEY` via the environment/compose; without it the app runs in transparent retrieval-only mode (see §2).
 
 ---
 
@@ -249,9 +256,14 @@ Run all tests:
 python -m pytest tests/ -v
 ```
 
-Run test suite with code coverage:
+Run test suite with code coverage (all packages):
 ```bash
-python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=utils --cov-report=term-missing
+python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=ports --cov=services --cov=ui --cov=utils --cov=app --cov-report=term-missing
+```
+
+Run the 30-query RAG evaluation suite (10 benchmarks, 5 adversarial injections, 5 out-of-domain refusals, 10 extended queries; all 5 metrics computed per run, results saved to `data/generated/rag_eval_results.json`):
+```bash
+python scripts/evaluate_rag.py
 ```
 
 ---
@@ -262,9 +274,9 @@ python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=utils 
 ├── app.py                         # Clean Streamlit shell entry point with API key management
 ├── config.json                    # Operational settings, model configs, and path resolutions
 ├── .env.example                   # Template for private credentials
-├── Dockerfile                     # Multi-stage Docker build configuration
+├── Dockerfile                     # Docker build (python:3.11-slim, non-root, healthcheck)
 ├── docker-compose.deploy.yml      # Docker compose production deployment definition
-├── requirements.txt               # Pinned dependencies
+├── requirements.txt               # Minimum-version dependencies (pin exact versions before production)
 ├── ui/                            # Streamlit Presentation Layer
 │   ├── tab_decision_console.py    # Tab 1: AI Chat, 1-Click Carousel & Citation Previews
 │   ├── tab_simulation.py          # Tab 2: Disruption Simulator & SQL Studio
@@ -295,7 +307,7 @@ python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=utils 
 │   ├── generate_documents.py      # Synthetic contracts & PDF generator
 │   ├── seed_graph.py              # SQLite-to-NetworkX graph builder
 │   ├── validate_data.py           # Referential integrity auditor
-│   └── evaluate_rag.py            # 10 Benchmark RAG evaluation runner
+│   └── evaluate_rag.py            # 30-query RAG evaluation suite (computed metrics)
 ├── templates/                     # Standalone HTML templates for PDF generation
 ├── docs/                          # Architectural & Design Specifications
 │   ├── architecture.md            # Detailed Tri-Modal CQRS system architecture
@@ -308,7 +320,22 @@ python -m pytest tests/ --cov=agent --cov=retrieval --cov=ingestion --cov=utils 
 
 ---
 
-## 9. Standards & Regulatory Compliance
+## 9. Troubleshooting (First-Time Users)
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Answers show “⚠️ LLM Synthesis Required … API Key Not Configured” with raw retrieved data below | No usable `OPENROUTER_API_KEY` | Enter a key in the sidebar (**Verify Key** first) or add it to `.env`, then rerun the query. Retrieval, citations, and the execution trace remain fully functional without a key |
+| Error details show `HTTP 429` from OpenRouter | Key valid but out of credits / rate-limited | Top up the key or switch provider routing in `config.json`; the agent surfaces the provider error verbatim instead of faking an answer |
+| `UnpicklingError` or graph-load traceback at startup or in tests | Stale `data/generated/` artifacts from an older checkout | Re-run the generation pipeline: `python scripts/generate_bom.py && python scripts/seed_graph.py && python ingestion/embedder.py` |
+| Tests fail on a fresh clone | Generated datasets are not in git by design | Run the step-3 generation commands, then `python -m pytest tests/` |
+| `table_summaries` collection shows 0 chunks | No seed document is tabular yet | Upload a `.csv`/`.xlsx` via Tab 4 — tabular parsing maps into that collection |
+| Sidebar shows 🟡 “Synthesis Offline” | No key configured (expected state) | Same as row 1; retrieval-only mode is intentional, not a bug |
+
+Known prototype constraints and the production roadmap are documented in [`docs/limitations.md`](docs/limitations.md).
+
+---
+
+## 10. Standards & Regulatory Compliance
 
 This system is engineered in accordance with European and sovereign cloud security frameworks:
 - **[Regulation (EU) 2024/1689 (EU AI Act)](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689)** — High-risk transparency, human oversight, and data governance.
